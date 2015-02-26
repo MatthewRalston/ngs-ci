@@ -1,0 +1,110 @@
+#!/usr/bin/env ruby
+
+require 'trollop'
+require 'bio'
+require 'LCI'
+
+include LCI
+
+
+# Show the help message without arguments
+
+ARGV[0] = "--help" if ARGV.length == 0
+
+# We want clean error messages through the logger, no ugly backtraces
+# because the user doesn't care about them, unless they specifically ask for
+# them with --loglevel debug
+module Kernel
+  alias _raise raise
+
+  def raise(*a)
+    begin
+      _raise(*a)
+    rescue LCIError => e
+      logger.error e.message
+      logger.debug e.backtrace unless e.backtrace.nil?
+      exit 1
+    end
+  end
+end
+
+
+opts = Trollop::options do
+  version LCI::VERSION
+  banner <<-EOS
+  LCI v#{LCI::VERSION}
+  by Matt Ralston <mrals89@gmail.com
+  DESCRIPTION:
+  Calculates a complexity metric for each base in the genome,
+  an alternative to pileup format.
+  The complexity metric is the average read overlap at a base in the genome.
+
+  Bug reports and feature requests at:
+  http://github.com/MatthewRalston/LCI
+  USAGE:
+  LCI <options>
+  EXAMPLES:
+  # compute lci for a set of reeads
+  LCI --reference genome.fa --bam aligned_reads.bam
+
+
+  OPTIONS:
+  EOS
+  opt :strand, "Strand specific option. One of [FR, RF, F].",
+      :type => String
+  opt :reference, "Reference genome in fasta format.",
+      :type => String
+  opt :bam, "Sorted bam file.",
+      :type => String
+  opt :threads, "Number of threads to use",
+      :default => 1,
+      :type => Integer
+  opt :outfile, "Prefix filename to use for CSV output",
+      :default => '<bam>_lci.csv'
+  opt :loglevel, "The amount of information to print. " +
+                 "One of [error, info, warn, debug]",
+      :default => 'info'
+end
+
+####################
+# Handle commands
+####################
+# Logging
+unless %w[error info warn debug].include? opts.loglevel
+  raise LCIError.new "Loglevel #{opts.loglevel} is not valid. " +
+  "It must be one of: error, info, warn, debug."
+end
+
+logger.level = Yell::Level.new opts.loglevel.to_sym
+
+# Strand specific option
+if opts.strand
+  unless %w[FR RF F].include? opts.strand
+    raise LCIError.new "Strand specific option #{opts.strand} is invalid." +
+      " It must be one of: [FR, RF, F]"
+  end
+end
+
+# Bam and fasta files exist
+if opts.bam && opts.reference
+  if !File.exist?(opts.bam)
+    raise LCIIOError.new "A sorted BAM file is required."
+  elsif !File.exist?(opts.reference)
+    raise LCIIOError.new "A fasta format reference genome is required."
+  end
+else
+  raise LCIIOError.new "A BAM file and a fasta file are required."
+end
+
+####################
+# Run calculation
+####################
+#logger.info "Opening BAM and reference files for calculation."
+#calculator = Calculator.new(opts.bam,opts.reference,strand: opts.strand,threads: opts.threads)
+
+
+#outfile = opts.outfile
+#logger.info "Writing library complexity index to #{outfile}"
+#calculator.export(outfile)
+
+puts("Calculation complete")

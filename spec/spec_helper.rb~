@@ -1,0 +1,11 @@
+require 'coveralls'
+Coveralls.wear!
+
+require 'LCI'
+
+
+Rspec.configure do |config|
+
+  config.color=true
+
+end
