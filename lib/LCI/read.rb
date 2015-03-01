@@ -18,8 +18,8 @@ module LCI
         raise LCIError.new "Invalid coordinate arguments:\n"
         "chr:#{chr}\tstart:#{start}\tstop:#{stop}\tstrand:#{strand}"
       end
-      if strand && !%w(FR RF F).include?(strand)
-        raise LCIError.new "Invalid coordinate arguments:\n"
+      if strand && !%w(+ -).include?(strand)
+        raise LCIError.new "Invalid strand argument:\n"
         "chr:#{chr}\tstart:#{start}\tstop:#{stop}\tstrand:#{strand}"
       end
       @start=start

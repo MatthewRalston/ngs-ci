@@ -4,6 +4,7 @@ require 'trollop'
 require 'bio'
 require 'LCI'
 
+
 include LCI
 
 
@@ -60,7 +61,7 @@ opts = Trollop::options do
       :default => 1,
       :type => Integer
   opt :outfile, "Prefix filename to use for CSV output",
-      :default => '<bam>_lci.csv'
+      :default => "lci.csv"
   opt :loglevel, "The amount of information to print. " +
                  "One of [error, info, warn, debug]",
       :default => 'info'
@@ -100,11 +101,17 @@ end
 # Run calculation
 ####################
 #logger.info "Opening BAM and reference files for calculation."
-#calculator = Calculator.new(opts.bam,opts.reference,strand: opts.strand,threads: opts.threads)
+calculator = Calculator.new(opts.bam,opts.reference,strand: opts.strand,threads: opts.threads)
+
+if opts.loglevel == "debug"
+  calculator.run(runtime: true)
+else
+  calculator.run
+end
 
 
-#outfile = opts.outfile
-#logger.info "Writing library complexity index to #{outfile}"
-#calculator.export(outfile)
+outfile = opts.outfile
+logger.info "Writing library complexity index to #{outfile}"
+calculator.export(outfile)
 
-puts("Calculation complete")
+puts("Calculation complete.")
