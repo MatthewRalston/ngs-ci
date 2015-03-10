@@ -1,3 +1,3 @@
-module LCI
+module SCI
   VERSION = "0.0.1"
 end

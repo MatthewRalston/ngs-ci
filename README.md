@@ -1,22 +1,22 @@
-[![Build Status](https://travis-ci.org/MatthewRalston/LCI.png?branch=master)](https://travis-ci.org/MatthewRalston/LCI) 
+[![Build Status](https://travis-ci.org/MatthewRalston/SCI.png?branch=master)](https://travis-ci.org/MatthewRalston/LCI) 
 
-[![Gem Version](https://badge.fury.io/rb/LCI.png)](http://badge.fury.io/rb/LCI)
+[![Gem Version](https://badge.fury.io/rb/SCI.png)](http://badge.fury.io/rb/LCI)
 
-[![Coverage Status](https://coveralls.io/repos/MatthewRalston/LCI/badge.png)](https://coveralls.io/r/MatthewRalston/LCI)
+[![Coverage Status](https://coveralls.io/repos/MatthewRalston/SCI/badge.png)](https://coveralls.io/r/MatthewRalston/LCI)
 
 
 
-# LCI
+# SCI
 
 NOTE: This is a project in progress. 
-This gem will calculate a library complexity index for BAM files.
+This gem will calculate a sequencing complexity index for BAM files.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'LCI'
+gem 'SCI'
 ```
 
 And then execute:
@@ -25,7 +25,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install LCI
+    $ gem install SCI
 
 ## Usage
 
@@ -33,7 +33,7 @@ TODO: Write usage instructions here
 
 ## Contributing
 
-1. Fork it ( https://github.com/MatthewRalston/LCI/fork )
+1. Fork it ( https://github.com/MatthewRalston/SCI/fork )
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)

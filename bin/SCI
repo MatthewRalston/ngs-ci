@@ -2,10 +2,15 @@
 
 require 'trollop'
 require 'bio'
-require 'LCI'
+require 'SCI'
 
 
-include LCI
+include SCI
+
+# Performance settings
+RUBY_GC_HEAP_GROWTH_FACTOR=2
+RUBY_GC_MALLOC_LIMIT=40000000
+RUBY_GC_MALLOC_LIMIT_MAX=75000000
 
 
 # Show the help message without arguments
@@ -21,7 +26,7 @@ module Kernel
   def raise(*a)
     begin
       _raise(*a)
-    rescue LCIError => e
+    rescue SCIError => e
       logger.error e.message
       logger.debug e.backtrace unless e.backtrace.nil?
       exit 1
@@ -31,9 +36,9 @@ end
 
 
 opts = Trollop::options do
-  version LCI::VERSION
+  version SCI::VERSION
   banner <<-EOS
-  LCI v#{LCI::VERSION}
+  SCI v#{SCI::VERSION}
   by Matt Ralston <mrals89@gmail.com
   DESCRIPTION:
   Calculates a complexity metric for each base in the genome,
@@ -41,12 +46,12 @@ opts = Trollop::options do
   The complexity metric is the average read overlap at a base in the genome.
 
   Bug reports and feature requests at:
-  http://github.com/MatthewRalston/LCI
+  http://github.com/MatthewRalston/SCI
   USAGE:
-  LCI <options>
+  SCI <options>
   EXAMPLES:
-  # compute lci for a set of reeads
-  LCI --reference genome.fa --bam aligned_reads.bam
+  # compute sci for a set of reeads
+  SCI --reference genome.fa --bam aligned_reads.bam
 
 
   OPTIONS:
@@ -61,7 +66,7 @@ opts = Trollop::options do
       :default => 1,
       :type => Integer
   opt :outfile, "Prefix filename to use for CSV output",
-      :default => "lci.csv"
+      :default => "sci.csv"
   opt :loglevel, "The amount of information to print. " +
                  "One of [error, info, warn, debug]",
       :default => 'info'
@@ -72,7 +77,7 @@ end
 ####################
 # Logging
 unless %w[error info warn debug].include? opts.loglevel
-  raise LCIError.new "Loglevel #{opts.loglevel} is not valid. " +
+  raise SCIError.new "Loglevel #{opts.loglevel} is not valid. " +
   "It must be one of: error, info, warn, debug."
 end
 
@@ -81,7 +86,7 @@ logger.level = Yell::Level.new opts.loglevel.to_sym
 # Strand specific option
 if opts.strand
   unless %w[FR RF F].include? opts.strand
-    raise LCIError.new "Strand specific option #{opts.strand} is invalid." +
+    raise SCIError.new "Strand specific option #{opts.strand} is invalid." +
       " It must be one of: [FR, RF, F]"
   end
 end
@@ -89,12 +94,12 @@ end
 # Bam and fasta files exist
 if opts.bam && opts.reference
   if !File.exist?(opts.bam)
-    raise LCIIOError.new "A sorted BAM file is required."
+    raise SCIIOError.new "A sorted BAM file is required."
   elsif !File.exist?(opts.reference)
-    raise LCIIOError.new "A fasta format reference genome is required."
+    raise SCIIOError.new "A fasta format reference genome is required."
   end
 else
-  raise LCIIOError.new "A BAM file and a fasta file are required."
+  raise SCIIOError.new "A BAM file and a fasta file are required."
 end
 
 ####################
@@ -111,7 +116,7 @@ end
 
 
 outfile = opts.outfile
-logger.info "Writing library complexity index to #{outfile}"
+logger.info "Writing sequencing complexity index to #{outfile}"
 calculator.export(outfile)
 
 puts("Calculation complete.")

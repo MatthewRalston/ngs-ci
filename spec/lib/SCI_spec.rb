@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe LCI do
+describe SCI do
 
   it 'will do something' do
     pending('something cool')

@@ -1,6 +1,6 @@
 require 'open3'
 
-module LCI
+module SCI
 
   class Cmd
 
