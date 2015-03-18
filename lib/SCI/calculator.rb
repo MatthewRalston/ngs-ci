@@ -18,7 +18,7 @@ module SCI
     # @param threads [Int] The number of threads used to compute SCI.
     # @param strand [String] One of [FR RF F] or nil for strandedness.
     def initialize(bam, reference, strand: nil, threads: 1)
-      @block_size = 500
+      @block_size = 1600
       @results = nil
       @reference=reference
       @bam = Bio::DB::Sam.new(:bam=>bam,:fasta=>reference)
@@ -48,7 +48,7 @@ module SCI
       chroms={}
       @chroms.each do |chrom,size|
         chroms[chrom] = @strand ? {"+"=>[],"-"=>[]} : {nil=>[]}
-        disk_accesses = (size/@block_size).ceil
+        disk_accesses = (size/@block_size.to_f).ceil
         #disk_accesses.times do |i|
         Parallel.each((0...disk_accesses).to_a,:in_threads => @threads) do |i|
           readblock(chrom,i).each do |key,val|
@@ -77,13 +77,13 @@ module SCI
       reads=[]
       results = @strand ? {"+" => [],"-" => []}: {nil => []}
       start = [0,(i * @block_size) - @buffer].max
-      stop = (i + 1) * @block_size
+      stop = [(i + 1) * @block_size, self.chroms[chrom]].min
       @bam.fetch(chrom,start,stop) {|read| reads << convert(read)}
       start += @buffer unless start == 0
       reads.compact!
       reads.sort_by!(&:start) unless reads.empty?
-      #for b in (start...stop).to_a
-      Parallel.each((start...stop).to_a, :in_threads => @threads) do |b|
+      for b in (start...stop).to_a
+      #Parallel.each((start...stop).to_a, :in_threads => @threads) do |b|
         aligned = reads.select{|r| r.start <= b && r.stop >= b}.uniq(&:start).group_by &:strand # Alternative selection of reads
         results.keys.each do|key|
           results[key] << [b,sci(aligned[key] || [])]
