@@ -40,6 +40,11 @@ module SCI
       end
     end
 
+=begin
+    ###############################################
+    #         S L U R P
+    ###############################################
+
     # Calculation of the sequencing complexity index
     #
     def run(runtime: false)
@@ -87,6 +92,63 @@ module SCI
       end
       return results
     end
+=end
+    ###############################################
+    #        R E A D    B L O C K S
+    ###############################################
+    # Calculation of the sequencing complexity index
+    #
+    def run(runtime: false)
+      RubyProf.start if runtime
+      # Convert each aligned read to Read clas
+      chroms={}
+      @chroms.each do |chrom,size|
+        chroms[chrom] = @strand ? {"+"=>[],"-"=>[]} : {nil=>[]}
+        disk_accesses = (size/@block_size.to_f).ceil
+        #disk_accesses.times do |i|
+        Parallel.each((0...disk_accesses).to_a,:in_processes => @threads) do |i|
+          readblock(chrom,i).each do |key,val|
+            chroms[chrom][key] += val
+          end
+        end
+      end
+      
+      # Printing runtime information for optimization
+      if runtime
+        runtime=RubyProf.stop
+        printer=RubyProf::FlatPrinter.new(runtime)
+        printer.print(STDOUT)
+      end
+      @results = chroms
+    end
+
+    # Reads a single block from the disk and calculates the SCI
+    #
+    # @param chrom [String] The chromosome from the bam file
+    # @param i [Integer] The number of blocks that have been read
+    # @return localSCI [Hash<Symbol,Array>]
+    #   * :+ (Array[Integer]) The SCI for the + strand
+    #   * :- (Array[Integer]) The SCI for the - strand
+    def readblock(chrom,i)
+      reads=[]
+      results = @strand ? {"+" => [],"-" => []}: {nil => []}
+      start = [0,(i * @block_size) - @buffer].max
+      stop = [(i + 1) * @block_size, self.chroms[chrom]].min
+      @bam.fetch(chrom,start,stop) {|read| reads << convert(read)}
+      start += @buffer unless start == 0
+      reads.compact!
+      reads.sort_by!(&:start) unless reads.empty?
+      for b in (start...stop).to_a
+      #Parallel.each((start...stop).to_a, :in_processes => @threads) do |b|
+        aligned = reads.select{|r| r.start <= b && r.stop >= b}.uniq(&:start).group_by &:strand # Alternative selection of reads
+        results.keys.each do|key|
+          results[key] << [b,sci(aligned[key] || [])]
+        end
+      end
+      return results
+    end
+
+
 
     # Calculates sequencing complexity index for a single base
     # 
