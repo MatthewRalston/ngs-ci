@@ -47,16 +47,16 @@ module SCI
       # Convert each aligned read to Read clas
       chroms={}
       @chroms.each do |chrom,size|
+        reads = []
+        @bam.fetch(chrom,0,size) {|read| reads << convert(read)}
         chroms[chrom] = @strand ? {"+"=>[],"-"=>[]} : {nil=>[]}
-        disk_accesses = (size/@block_size.to_f).ceil
-        #disk_accesses.times do |i|
-        Parallel.each((0...disk_accesses).to_a,:in_threads => @threads) do |i|
-          readblock(chrom,i).each do |key,val|
-            chroms[chrom][key] += val
+        process(reads,size).each do |hash|
+          hash.each do |key,val|
+            chroms[chrom][key] << val
           end
         end
       end
-      
+
       # Printing runtime information for optimization
       if runtime
         runtime=RubyProf.stop
@@ -66,28 +66,24 @@ module SCI
       @results = chroms
     end
 
-    # Reads a single block from the disk and calculates the SCI
+    # Calculates the SCI in parallel for each base in a chromosome
     #
-    # @param chrom [String] The chromosome from the bam file
-    # @param i [Integer] The number of blocks that have been read
-    # @return localSCI [Hash<Symbol,Array>]
-    #   * :+ (Array[Integer]) The SCI for the + strand
-    #   * :- (Array[Integer]) The SCI for the - strand
-    def readblock(chrom,i)
-      reads=[]
-      results = @strand ? {"+" => [],"-" => []}: {nil => []}
-      start = [0,(i * @block_size) - @buffer].max
-      stop = [(i + 1) * @block_size, self.chroms[chrom]].min
-      @bam.fetch(chrom,start,stop) {|read| reads << convert(read)}
-      start += @buffer unless start == 0
+    # @param reads [Array<SCI::Read>] A list of Read objects for processing
+    # @param size [Integer] The size of the chromosome
+    # @return [Array<Hash>]
+    #   * :+ (Array[Integer]) The position and SCI for the + strand
+    #   * :- (Array[Integer]) The position and SCI for the - strand
+    def process(reads,size)
+      strands = @strand ? {"+" => [],"-" => []}: {nil => []}
       reads.compact!
       reads.sort_by!(&:start) unless reads.empty?
-      for b in (start...stop).to_a
-      #Parallel.each((start...stop).to_a, :in_threads => @threads) do |b|
-        aligned = reads.select{|r| r.start <= b && r.stop >= b}.uniq(&:start).group_by &:strand # Alternative selection of reads
-        results.keys.each do|key|
-          results[key] << [b,sci(aligned[key] || [])]
+      results = Parallel.map((0...size).to_a, :in_processes => @threads) do |b|
+        aligned = reads.select{|r| r.start <= b && r.stop >= b}.uniq(&:start).group_by &:strand
+        temp = {}
+        strands.keys.each do |key|
+          temp[key] = [b,sci(aligned[key] || [])]
         end
+        temp
       end
       return results
     end

@@ -42,26 +42,44 @@ describe "#run" do
   end
 end
 
-
-describe "#readblock" do
-  context "when reading the first block" do
-    it "returns a hash with an array of length @block_size" do
-      @calc=SCI::Calculator.new(testbam,testfasta)
-      results=@calc.readblock(@calc.chroms.keys[0],0)
-      result_length=results[results.keys[0]].size
-      expect(result_length).to eq(@calc.block_size)
+describe "#process" do
+  context "when running in strand-specific mode" do
+    before(:each) do
+      @size = 192000
+      @calc = SCI::Calculator.new(testbam,testfasta,strand:"FR")
+      @bam = Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
+      @bam.open
+      @reads = []
+      @bam.fetch("NC_001988.2",0,@size){|x| @reads << @calc.convert(x)}
+      @results = @calc.process(@reads,@size)
+    end
+    it "returns an array with the same size as the sequence" do
+      expect(@results.size).to eq(@size)
+    end
+    it "returns hashes with + and - for keys" do
+      first_result = @results[0]
+      expect(first_result.keys).to eq(%w(+ -))
     end
   end
-  context "when reading any other block" do
-    it "returns a hash with and array of length @block_size" do
-      @calc=SCI::Calculator.new(testbam,testfasta)
-      results=@calc.readblock(@calc.chroms.keys[0],1)
-      result_length=results[results.keys[0]].size
-      expect(result_length).to eq(@calc.block_size)      
+  context "when running in unstranded mode" do
+    before(:each) do
+      @size = 192000
+      @calc = SCI::Calculator.new(testbam,testfasta)
+      @bam = Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
+      @bam.open
+      @reads = []
+      @bam.fetch("NC_001988.2",0,@size){|x| @reads << @calc.convert(x)}
+      @results = @calc.process(@reads,@size)
+    end
+    it "returns an array with the same size as the sequence" do
+      expect(@results.size).to eq(@size)
+    end
+    it "returns hashes with nil for its key" do
+      first_result = @results[0]
+      expect(first_result.keys).to eq([nil])
     end
   end
 end
-
 
 describe "#sci" do
   context "when passed an array of read objects" do

@@ -27,8 +27,8 @@ module Kernel
     begin
       _raise(*a)
     rescue SCIError => e
-      logger.error e.message
-      logger.debug e.backtrace unless e.backtrace.nil?
+      #logger.error e.message
+      #logger.debug e.backtrace unless e.backtrace.nil?
       exit 1
     end
   end
@@ -81,7 +81,7 @@ unless %w[error info warn debug].include? opts.loglevel
   "It must be one of: error, info, warn, debug."
 end
 
-logger.level = Yell::Level.new opts.loglevel.to_sym
+#logger.level = Yell::Level.new opts.loglevel.to_sym
 
 # Strand specific option
 if opts.strand
@@ -116,7 +116,7 @@ end
 
 
 outfile = opts.outfile
-logger.info "Writing sequencing complexity index to #{outfile}"
+#logger.info "Writing sequencing complexity index to #{outfile}"
 calculator.export(outfile)
 
 puts("Calculation complete.")
