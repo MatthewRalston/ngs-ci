@@ -1,8 +1,8 @@
-[![Build Status](https://travis-ci.org/MatthewRalston/SCI.png?branch=master)](https://travis-ci.org/MatthewRalston/LCI) 
+[![Build Status](https://travis-ci.org/MatthewRalston/SCI.png?branch=master)](https://travis-ci.org/MatthewRalston/SCI) 
 
-[![Gem Version](https://badge.fury.io/rb/SCI.png)](http://badge.fury.io/rb/LCI)
+[![Gem Version](https://badge.fury.io/rb/SCI.png)](http://badge.fury.io/rb/SCI)
 
-[![Coverage Status](https://coveralls.io/repos/MatthewRalston/SCI/badge.png)](https://coveralls.io/r/MatthewRalston/LCI)
+[![Coverage Status](https://coveralls.io/repos/MatthewRalston/SCI/badge.png)](https://coveralls.io/r/MatthewRalston/SCI)
 
 
 
@@ -25,7 +25,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install SCI
+    $ gem install SCI --pre
 
 ## Usage
 

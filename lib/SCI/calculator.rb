@@ -40,62 +40,6 @@ module SCI
       end
     end
 
-=begin
-    ###############################################
-    #         S L U R P
-    ###############################################
-
-    # Calculation of the sequencing complexity index
-    #
-    def run(runtime: false)
-      RubyProf.start if runtime
-      # Convert each aligned read to Read clas
-      chroms={}
-      @chroms.each do |chrom,size|
-        reads = []
-        @bam.fetch(chrom,0,size) {|read| reads << convert(read)}
-        chroms[chrom] = @strand ? {"+"=>[],"-"=>[]} : {nil=>[]}
-        process(reads,size).each do |hash|
-          hash.each do |key,val|
-            chroms[chrom][key] << val
-          end
-        end
-      end
-
-      # Printing runtime information for optimization
-      if runtime
-        runtime=RubyProf.stop
-        printer=RubyProf::FlatPrinter.new(runtime)
-        printer.print(STDOUT)
-      end
-      @results = chroms
-    end
-
-    # Calculates the SCI in parallel for each base in a chromosome
-    #
-    # @param reads [Array<SCI::Read>] A list of Read objects for processing
-    # @param size [Integer] The size of the chromosome
-    # @return [Array<Hash>]
-    #   * :+ (Array[Integer]) The position and SCI for the + strand
-    #   * :- (Array[Integer]) The position and SCI for the - strand
-    def process(reads,size)
-      strands = @strand ? {"+" => [],"-" => []}: {nil => []}
-      reads.compact!
-      reads.sort_by!(&:start) unless reads.empty?
-      results = Parallel.map((0...size).to_a, :in_processes => @threads) do |b|
-        aligned = reads.select{|r| r.start <= b && r.stop >= b}.uniq(&:start).group_by &:strand
-        temp = {}
-        strands.keys.each do |key|
-          temp[key] = [b,sci(aligned[key] || [])]
-        end
-        temp
-      end
-      return results
-    end
-=end
-    ###############################################
-    #        R E A D    B L O C K S
-    ###############################################
     # Calculation of the sequencing complexity index
     #
     def run(runtime: false)
@@ -106,10 +50,11 @@ module SCI
         chroms[chrom] = @strand ? {"+"=>[],"-"=>[]} : {nil=>[]}
         disk_accesses = (size/@block_size.to_f).ceil
         #disk_accesses.times do |i|
-        Parallel.each((0...disk_accesses).to_a,:in_processes => @threads) do |i|
-          readblock(chrom,i).each do |key,val|
-            chroms[chrom][key] += val
-          end
+        data = Parallel.map((0...disk_accesses).to_a,:in_processes => @threads) do |i|
+          readblock(chrom,i)
+        end
+        chroms[chrom].keys.each do |key|
+          chroms[chrom][key] = data.map{|x| x[key]}.flatten(1)
         end
       end
       
@@ -140,7 +85,7 @@ module SCI
       reads.sort_by!(&:start) unless reads.empty?
       for b in (start...stop).to_a
       #Parallel.each((start...stop).to_a, :in_processes => @threads) do |b|
-        aligned = reads.select{|r| r.start <= b && r.stop >= b}.uniq(&:start).group_by &:strand # Alternative selection of reads
+        aligned = reads.select{|r| r.start <= b && r.stop >= b}.group_by &:strand # Alternative selection of reads
         results.keys.each do|key|
           results[key] << [b,sci(aligned[key] || [])]
         end
@@ -157,7 +102,8 @@ module SCI
     def sci(reads)
       #x=(unique_start_sites(reads)*average_overlap(reads)/@buffer.to_f).round(4)
       #raise SCIError.new "sci is < 0: #{x}" unless x >= 0
-      return (reads.map(&:start).size*average_overlap(reads)/@buffer.to_f).round(4)
+      reads.uniq! &:start
+      return (reads.size*average_overlap(reads)/@buffer.to_f).round(4)
     end
 
     # Calculates average overlap between a group of reads
@@ -166,10 +112,13 @@ module SCI
     # @return avg_overlap [Integer] Average overlap between reads
     def average_overlap(reads)
       avg=0
-      for r1 in reads
-        avg+=(reads.
-              reject{|r| r == r1}.map{|r| overlap(r,r1)}.
-              reduce(:+)/(reads.size - 1)/reads.size.to_f) unless reads.size == 1
+      unless reads.size == 1
+        for r1 in reads # for each of n reads
+          avg+=(reads.
+                reject{|r| r == r1}. # select the n-1 other reads
+                map{|r| overlap(r,r1)}. # calculate their overlap to r1
+                reduce(:+).to_f/(reads.size - 1))/reads.size
+        end
       end
       return avg
     end
