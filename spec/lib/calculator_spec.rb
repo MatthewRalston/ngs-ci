@@ -74,17 +74,18 @@ describe "#sci" do
       @bam.fetch("NC_001988.2",75,75){|x| @reads << @calc.convert(x)}
       @reads = @reads.uniq{|r|r.start}
     end
-    it "returns a float" do
-      expect(@calc.sci(@reads)).to be_kind_of(Float)
+    it "returns an array" do
+      expect(@calc.sci(@reads)).to be_kind_of(Array)
     end
     it "returns the sequencing complexity index" do
-      expect(@calc.sci(@reads)).to eq(1.6667)
+      expect(@calc.sci(@reads)[-1]).to eq(0.0)
     end
   end
   context "when passed an empty array" do
     it "returns nil" do
       @calc = SCI::Calculator.new(testbam,testfasta)
-      expect(@calc.sci([])).to be_zero
+      empty_sci = @calc.sci([])[-1]
+      expect(empty_sci).to be_zero
     end
   end
 end
@@ -100,24 +101,32 @@ describe "#read_length" do
   end
 end
 
-describe "#average_overlap" do
+describe "#summed_overlaps" do
+  it "returns an int" do
+    @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
+    @bam.open
+    @reads = []
+    @calc=SCI::Calculator.new(testbam,testfasta)
+    @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
+    @reads = @reads.uniq{|r| r.start}
+    expect(@calc.summed_overlaps(@reads)).to be_an(Integer)
+  end
   context "when passed an array of read objects" do
     before(:each) do
       @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
       @bam.open
       @reads = []
       @calc=SCI::Calculator.new(testbam,testfasta)
-
       @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
       @reads = @reads.uniq{|r| r.start}
     end
     it "returns the #overlap of two reads" do
-      overlap_length = @calc.overlap(@reads[0],@reads[1])
-      expect(@calc.average_overlap(@reads[0..1])).to eq(overlap_length)
+      summed_overlap = 2*@calc.overlap(@reads[0],@reads[1])
+      expect(@calc.summed_overlaps(@reads[0..1])).to eq(summed_overlap)
     end
 
     it "calculates the average overlap between a group of reads" do
-      expect(@calc.average_overlap(@reads[0..7]).round(4)).to eq(31.6667)
+      expect(@calc.summed_overlaps(@reads[0..7]).round(4)).to eq(380.0)
     end
   end
   context "when passed an array with a single read object" do
@@ -127,13 +136,13 @@ describe "#average_overlap" do
       @reads=[]
       @calc=SCI::Calculator.new(testbam,testfasta)
       @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
-      expect(@calc.average_overlap([@reads[0]])).to be_zero
+      expect(@calc.summed_overlaps([@reads[0]])).to be_zero
     end
   end
   context "when passed an empty array" do
     it "returns zero" do
       @calc=SCI::Calculator.new(testbam,testfasta)
-      expect(@calc.average_overlap([])).to be_zero
+      expect(@calc.summed_overlaps([])).to be_zero
     end
   end
 end
