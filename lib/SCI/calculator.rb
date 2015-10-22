@@ -115,12 +115,13 @@ module SCI
     # @param reads [Array<SCI::Read>] A group of reads aligned to a single base.
     # @return sci [Float] 
     def sci(reads)
+      numreads=reads.size
       # Groups reads by start site
       # selects the largest read length from the groups
       reads = reads.group_by(&:start).map{|k,v| v.max{|x,y| (x.stop-x.start).abs <=> (y.stop-y.start).abs}}
       o = summed_overlaps(reads)
-      numreads = reads.size
-      return [numreads,(@buffer*o.to_f/@denom).round(4),(300*numreads*o/(2*@denom)).round(4)]
+      uniquereads = reads.size
+      return [numreads,uniquereads,(@buffer*o.to_f/@denom).round(4),(300*uniquereads*o/(2*@denom)).round(4)]
     end
 
     # Calculates summed overlap between a group of reads
@@ -270,7 +271,7 @@ module SCI
     def export(outfile)
       if @results
         File.open(outfile,'w') do |file|
-          file.puts("Chrom,Base,Strand,Unique_Reads,Overlap,SCI")
+          file.puts("Chrom,Base,Strand,Depth,Unique_Reads,Overlap,SCI")
           @results.each do |chrom,results|
             results.each do |strand,val|
               val.each do |x|
