@@ -31,7 +31,7 @@ module SCI
       read_length
       if strand
         unless %w(FR RF F).include?(strand)
-          raise SCIError.new "Strand specific option #{opts.strand} is invalid." +
+          raise SCI::SCIError.new "Strand specific option #{opts.strand} is invalid." +
       " It must be one of: [FR, RF, F]"
         end
         @strand = strand.downcase
@@ -47,16 +47,29 @@ module SCI
       # Convert each aligned read to Read clas
       chroms={}
       @chroms.each do |chrom,size|
-        reads = []
-        @bam.fetch(chrom,0,size) {|read| reads << convert(read)}
         chroms[chrom] = @strand ? {"+"=>[],"-"=>[]} : {nil=>[]}
-        process(reads,size).each do |hash|
-          hash.each do |key,val|
-            chroms[chrom][key] << val
-          end
-        end
-      end
+        disk_accesses = (size/@block_size.to_f).ceil
+=begin
+        # N O N - P A R A L L E L
+        i=0
+        while i < disk_accesses
 
+          readblock(chrom,i).each do |key,val|
+            chroms[chrom][key] += val
+          end
+          i+=1
+        end
+=end
+
+        data = Parallel.map((0...disk_accesses).to_a,:in_processes => @threads) do |i|
+          readblock(chrom,i)
+        end
+        chroms[chrom].keys.each do |key|
+          chroms[chrom][key] = data.map{|x| x[key]}.flatten(1)
+        end
+
+      end
+      
       # Printing runtime information for optimization
       if runtime
         runtime=RubyProf.stop
@@ -66,51 +79,71 @@ module SCI
       @results = chroms
     end
 
-    # Calculates the SCI in parallel for each base in a chromosome
+    # Reads a single block from the disk and calculates the SCI
     #
-    # @param reads [Array<SCI::Read>] A list of Read objects for processing
-    # @param size [Integer] The size of the chromosome
-    # @return [Array<Hash>]
-    #   * :+ (Array[Integer]) The position and SCI for the + strand
-    #   * :- (Array[Integer]) The position and SCI for the - strand
-    def process(reads,size)
-      strands = @strand ? {"+" => [],"-" => []}: {nil => []}
+    # @param chrom [String] The chromosome from the bam file
+    # @param i [Integer] The number of blocks that have been read
+    # @return localSCI [Hash<Symbol,Array>]
+    #   * :+ (Array[Integer]) The SCI for the + strand
+    #   * :- (Array[Integer]) The SCI for the - strand
+    def readblock(chrom,i)
+      reads=[]
+      results = @strand ? {"+" => [],"-" => []}: {nil => []}
+      start = [0,(i * @block_size) - @buffer].max
+      stop = [(i + 1) * @block_size, self.chroms[chrom]].min
+      @bam.fetch(chrom,start,stop) {|read| reads << convert(read)}
+      start += @buffer unless start == 0
       reads.compact!
       reads.sort_by!(&:start) unless reads.empty?
-      results = Parallel.map((0...size).to_a, :in_processes => @threads) do |b|
-        aligned = reads.select{|r| r.start <= b && r.stop >= b}.uniq(&:start).group_by &:strand
-        temp = {}
-        strands.keys.each do |key|
-          temp[key] = [b,sci(aligned[key] || [])]
+      x=0
+      bases = (start...stop).to_a
+      block = stop - start
+      while x < block
+        b = bases[x]
+        aligned = reads.select{|r| r.start <= b && r.stop - 1 >= b}.group_by &:strand
+        results.keys.each do|key|
+          results[key] << [b,*sci(aligned[key] || [])]
         end
-        temp
+        x+=1
       end
       return results
     end
+
 
     # Calculates sequencing complexity index for a single base
     # 
     # @param reads [Array<SCI::Read>] A group of reads aligned to a single base.
     # @return sci [Float] 
     def sci(reads)
-      #x=(unique_start_sites(reads)*average_overlap(reads)/@buffer.to_f).round(4)
-      #raise SCIError.new "sci is < 0: #{x}" unless x >= 0
-      return (reads.map(&:start).size*average_overlap(reads)/@buffer.to_f).round(4)
+      numreads=reads.size
+      # Groups reads by start site
+      # selects the largest read length from the groups
+      reads = reads.group_by(&:start).map{|k,v| v.max{|x,y| (x.stop-x.start).abs <=> (y.stop-y.start).abs}}
+      o = summed_overlaps(reads)
+      uniquereads = reads.size
+      return [numreads,uniquereads,(@buffer*o.to_f/@denom).round(4),(300*uniquereads*o/(2*@denom)).round(4)]
     end
 
-    # Calculates average overlap between a group of reads
+    # Calculates summed overlap between a group of reads
     #
     # @param reads [Array<SCI::Read>] Array of reads
-    # @return avg_overlap [Integer] Average overlap between reads
-    def average_overlap(reads)
-      avg=0
-      for r1 in reads
-        avg+=(reads.
-              reject{|r| r == r1}.map{|r| overlap(r,r1)}.
-              reduce(:+)/(reads.size - 1)/reads.size.to_f) unless reads.size == 1
+    # @return avg_overlap [Integer] Summed overlap between reads
+    def summed_overlaps(reads)
+      numreads = reads.size
+      sum=0
+      unless numreads == 1
+        i = 0
+        while i < numreads
+          r1 = reads[i] # for each of n reads
+          sum+=reads.
+                reject{|r| r == r1}. # select the n-1 other reads
+                map{|r| overlap(r,r1)}. # calculate their overlap to r1
+                reduce(:+)
+          i+=1
+        end
       end
-      return avg
-    end
+      return sum
+    end    
 
     # Calculation of the overlap between two reads
     # 
@@ -118,7 +151,19 @@ module SCI
     # @param read2 [SCI::Read] First read to be compared
     # @return overlap_length [Integer] Length of overlap
     def overlap(read1,read2)
-      return read1.start > read2.start ? (read2.stop - read1.start) : (read1.stop - read2.start)
+      if read1.start > read2.start
+        if read1.stop < read2.stop # Read 1 is inside read 2
+          read1.stop - read1.start
+        else # Normal overlap
+          read2.stop - read1.start
+        end
+      else
+        if read1.stop > read2.stop # Read 2 is inside read 1
+          read2.stop - read2.start
+        else # Normal overlap
+          read1.stop - read2.start
+        end
+      end
     end
 
     # Loads the read length from a bam file into the @buffer variable
@@ -129,10 +174,20 @@ module SCI
       if stats.empty?
         raise SCIIOError.new "BAM file is empty! Check samtools idxstats."
       else
-        @bam.view do |read|
-          @buffer=read.seq.size
-          break
+        i=0
+        lengths=[]
+        test = @block_size
+        while i <= test 
+          @bam.view do |read|
+            lengths << read.seq.size
+            i +=1
+          end
+          if i == test && lengths.size < 100
+            test += @block_size
+          end
         end
+        @buffer = lengths.max
+        @denom = @buffer**2 * (@buffer - 1)**2
       end
     end
 
@@ -216,11 +271,11 @@ module SCI
     def export(outfile)
       if @results
         File.open(outfile,'w') do |file|
-          file.puts("Chrom,Base,Strand,SCI")
+          file.puts("Chrom,Base,Strand,Depth,Unique_Reads,Overlap,SCI")
           @results.each do |chrom,results|
             results.each do |strand,val|
               val.each do |x|
-                file.puts([chrom,x[0],strand,x[1]].join(","))
+                file.puts([chrom,x[0],strand,*x[1..-1]].join(","))
               end
             end
           end
