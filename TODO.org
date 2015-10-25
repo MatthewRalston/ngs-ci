@@ -1,0 +1,39 @@
+* TODO
+** Square the U/L term?? Max of 100?
+** Rarefaction curves
+*** bash + samtools + resampling (100 times?)
+*** How many divisions??
+** Triangular numbers
+*** Triangular number defined as
+*** T(n) = n(n+1)/2
+*** Maximum overlap determined by function of read length L
+*** The read with most 'even' overlaps is directly in the middle
+*** EXAMPLES:
+**** Left most read (a)
+***** T(L-1)
+**** Next left-most read (b)
+***** (L-1) + T(L-1) - 1
+**** (c)
+***** (L-2) + (L-1) + T(L-1) - 2 - 1
+*** For each of j reads (aligned in best case scenario)
+**** Sum overlaps with all other reads:
+**** f(L) = 2*T(L-1) - T(J-1) - T(L - J)
+**** f(L) = (L-1)(L-1+1) - (J-1)(J-1+1)/2 - (L-J)(L-J+1)/2
+**** f(L) = L(L-1) - J*(J-1)/2 - (L-J)(L-J+1)/2
+**** f(L) = L^2 - L + (-J*J + J)/2 - (L-J)(L-J+1)/2
+**** 2f(L) = 2*(L^2) - 2L - J^2 + J - (L-J)(L-J+1)
+**** 2f(L) = 2*(L^2) - 2L - J^2 + J - (L^2 - 2LJ + L + J^2 - J)
+**** 2f(L) = 2*(L^2) - 2L - J^2 + J - L^2 + 2LJ - L - J^2 + J
+**** 2f(L) = 2*(L^2) - L^2 - J^2 - J^2 + 2LJ - 2L - L + J + J
+**** 2f(L) = L^2 - 2*(J^2) + 2LJ - 3L + 2J
+**** f(L) = -J^2 + (L^2)/2 + LJ - 3L/2 + J
+**** 2850 (triangular number T(L-1) L=76 J=1
+**** f(76) = 2850
+* Notes
+** U*O/L vs. 200*U*O/(L^2)
+** U/L is the number of unique reads at that base, length normalized
+** When U/L is 1 (maximum saturation)
+** O = L/2
+** Although, average overlap can be greater than L/2 with less reads 
+
+* Bugs

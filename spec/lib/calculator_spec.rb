@@ -39,44 +39,27 @@ describe "#run" do
     it "returns the hash with a nil strand key" do
       expect(@calc.run[@testchrom].keys[0]).to be nil
     end
+    it "returns SCI for each base of the genome" do
+      expect(@calc.run[@testchrom][nil].size).to eq(@calc.chroms[@testchrom])
+    end
   end
 end
 
-describe "#process" do
-  context "when running in strand-specific mode" do
-    before(:each) do
-      @size = 192000
-      @calc = SCI::Calculator.new(testbam,testfasta,strand:"FR")
-      @bam = Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
-      @bam.open
-      @reads = []
-      @bam.fetch("NC_001988.2",0,@size){|x| @reads << @calc.convert(x)}
-      @results = @calc.process(@reads,@size)
-    end
-    it "returns an array with the same size as the sequence" do
-      expect(@results.size).to eq(@size)
-    end
-    it "returns hashes with + and - for keys" do
-      first_result = @results[0]
-      expect(first_result.keys).to eq(%w(+ -))
+describe "#readblock" do
+  context "when reading the first block" do
+    it "returns a hash with an array of length @block_size" do
+      @calc=SCI::Calculator.new(testbam,testfasta)
+      results=@calc.readblock(@calc.chroms.keys[0],0)
+      result_length=results[results.keys[0]].size
+      expect(result_length).to eq(@calc.block_size)
     end
   end
-  context "when running in unstranded mode" do
-    before(:each) do
-      @size = 192000
-      @calc = SCI::Calculator.new(testbam,testfasta)
-      @bam = Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
-      @bam.open
-      @reads = []
-      @bam.fetch("NC_001988.2",0,@size){|x| @reads << @calc.convert(x)}
-      @results = @calc.process(@reads,@size)
-    end
-    it "returns an array with the same size as the sequence" do
-      expect(@results.size).to eq(@size)
-    end
-    it "returns hashes with nil for its key" do
-      first_result = @results[0]
-      expect(first_result.keys).to eq([nil])
+  context "when reading any other block" do
+    it "returns a hash with and array of length @block_size" do
+      @calc=SCI::Calculator.new(testbam,testfasta)
+      results=@calc.readblock(@calc.chroms.keys[0],1)
+      result_length=results[results.keys[0]].size
+      expect(result_length).to eq(@calc.block_size)      
     end
   end
 end
@@ -91,17 +74,18 @@ describe "#sci" do
       @bam.fetch("NC_001988.2",75,75){|x| @reads << @calc.convert(x)}
       @reads = @reads.uniq{|r|r.start}
     end
-    it "returns a float" do
-      expect(@calc.sci(@reads)).to be_kind_of(Float)
+    it "returns an array" do
+      expect(@calc.sci(@reads)).to be_kind_of(Array)
     end
     it "returns the sequencing complexity index" do
-      expect(@calc.sci(@reads)).to eq(1.6316)
+      expect(@calc.sci(@reads)[-1]).to eq(0.0)
     end
   end
   context "when passed an empty array" do
     it "returns nil" do
       @calc = SCI::Calculator.new(testbam,testfasta)
-      expect(@calc.sci([])).to be_zero
+      empty_sci = @calc.sci([])[-1]
+      expect(empty_sci).to be_zero
     end
   end
 end
@@ -117,24 +101,32 @@ describe "#read_length" do
   end
 end
 
-describe "#average_overlap" do
+describe "#summed_overlaps" do
+  it "returns an int" do
+    @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
+    @bam.open
+    @reads = []
+    @calc=SCI::Calculator.new(testbam,testfasta)
+    @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
+    @reads = @reads.uniq{|r| r.start}
+    expect(@calc.summed_overlaps(@reads)).to be_an(Integer)
+  end
   context "when passed an array of read objects" do
     before(:each) do
       @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
       @bam.open
       @reads = []
       @calc=SCI::Calculator.new(testbam,testfasta)
-
       @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
       @reads = @reads.uniq{|r| r.start}
     end
     it "returns the #overlap of two reads" do
-      overlap_length = @calc.overlap(@reads[0],@reads[1])
-      expect(@calc.average_overlap(@reads[0..1])).to eq(overlap_length)
+      summed_overlap = 2*@calc.overlap(@reads[0],@reads[1])
+      expect(@calc.summed_overlaps(@reads[0..1])).to eq(summed_overlap)
     end
 
     it "calculates the average overlap between a group of reads" do
-      expect(@calc.average_overlap(@reads[0..7]).round(4)).to eq(31.0)
+      expect(@calc.summed_overlaps(@reads[0..7]).round(4)).to eq(380.0)
     end
   end
   context "when passed an array with a single read object" do
@@ -144,13 +136,13 @@ describe "#average_overlap" do
       @reads=[]
       @calc=SCI::Calculator.new(testbam,testfasta)
       @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
-      expect(@calc.average_overlap([@reads[0]])).to be_zero
+      expect(@calc.summed_overlaps([@reads[0]])).to be_zero
     end
   end
   context "when passed an empty array" do
     it "returns zero" do
       @calc=SCI::Calculator.new(testbam,testfasta)
-      expect(@calc.average_overlap([])).to be_zero
+      expect(@calc.summed_overlaps([])).to be_zero
     end
   end
 end

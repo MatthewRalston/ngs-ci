@@ -3,7 +3,7 @@
 require 'trollop'
 require 'bio'
 require 'SCI'
-
+require 'yell'
 
 include SCI
 
@@ -27,8 +27,8 @@ module Kernel
     begin
       _raise(*a)
     rescue SCIError => e
-      #logger.error e.message
-      #logger.debug e.backtrace unless e.backtrace.nil?
+      logger.error e.message
+      logger.debug e.backtrace unless e.backtrace.nil?
       exit 1
     end
   end
@@ -43,12 +43,13 @@ opts = Trollop::options do
   DESCRIPTION:
   Calculates a complexity metric for each base in the genome,
   an alternative to pileup format.
-  The complexity metric is the average read overlap at a base in the genome.
+  The complexity metric is calculated for each base in the genome as the product of a read-length normalized average read overlap and a read-length normalized number of unique reads.
 
   Bug reports and feature requests at:
   http://github.com/MatthewRalston/SCI
   USAGE:
-  SCI <options>
+  SCI --reference REFERENCE_FASTA --bam SORTED_BAM <options>
+
   EXAMPLES:
   # compute sci for a set of reeads
   SCI --reference genome.fa --bam aligned_reads.bam
@@ -56,11 +57,13 @@ opts = Trollop::options do
 
   OPTIONS:
   EOS
-  opt :strand, "Strand specific option. One of [FR, RF, F].",
-      :type => String
   opt :reference, "Reference genome in fasta format.",
-      :type => String
+      :type => String,
+      :required => true
   opt :bam, "Sorted bam file.",
+      :type => String,
+      :required => true
+  opt :strand, "Strand specific option. One of [FR, RF, F].",
       :type => String
   opt :threads, "Number of threads to use",
       :default => 1,
@@ -81,7 +84,7 @@ unless %w[error info warn debug].include? opts.loglevel
   "It must be one of: error, info, warn, debug."
 end
 
-#logger.level = Yell::Level.new opts.loglevel.to_sym
+logger.level = Yell::Level.new opts.loglevel.to_sym
 
 # Strand specific option
 if opts.strand
@@ -94,18 +97,18 @@ end
 # Bam and fasta files exist
 if opts.bam && opts.reference
   if !File.exist?(opts.bam)
-    raise SCIIOError.new "A sorted BAM file is required."
+    raise SCIIOError.new "BAM file #{opts.bam} does not exist."
   elsif !File.exist?(opts.reference)
-    raise SCIIOError.new "A fasta format reference genome is required."
+    raise SCIIOError.new "Fasta file #{opts.reference} does not exist."
   end
 else
-  raise SCIIOError.new "A BAM file and a fasta file are required."
+  raise SCIIOError.new "A sorted BAM file and a fasta file are required."
 end
 
 ####################
 # Run calculation
 ####################
-#logger.info "Opening BAM and reference files for calculation."
+logger.info "Opening BAM and reference files for calculation."
 calculator = Calculator.new(opts.bam,opts.reference,strand: opts.strand,threads: opts.threads)
 
 if opts.loglevel == "debug"
@@ -116,7 +119,7 @@ end
 
 
 outfile = opts.outfile
-#logger.info "Writing sequencing complexity index to #{outfile}"
+logger.info "Writing sequencing complexity index to #{outfile}"
 calculator.export(outfile)
 
-puts("Calculation complete.")
+logger.info "Calculation complete."
