@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 [![Build Status](https://travis-ci.org/MatthewRalston/SCI.png?branch=master)](https://travis-ci.org/MatthewRalston/SCI)
-=======
-[![Build Status](https://travis-ci.org/MatthewRalston/SCI.png?branch=master)](https://travis-ci.org/MatthewRalston/SCI) 
->>>>>>> origin/master
 
 [![Gem Version](https://badge.fury.io/rb/SCI.png)](http://badge.fury.io/rb/SCI)
 
