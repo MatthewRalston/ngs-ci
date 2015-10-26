@@ -1,13 +1,20 @@
 language: ruby
-cache: bundler
-
-rvm - 2.0.0
-
-script: 'bundle exec rake'
-
+rvm:
+  - "2.0.0"
+  - "2.1.0"
+  - "2.2.0"
+before_script:
+  - bundle install
+os:
+  - linux
+  - osx
+#matrix:
+#  allow_failures:
+#    - os: osx
+#    - rvm: "2.2.0"
 notifications:
-	email:
-		recipients:
-			- mrals@udel.edu
-		on_failure: change
-		on_success: never
+  email:
+    recipients:
+      - mrals@udel.edu
+    on_failure: change
+    on_success: never
