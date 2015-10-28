@@ -16,7 +16,7 @@ This gem will calculate a sequencing complexity index for BAM files.
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'sci'
+gem 'NGSCI'
 ```
 
 And then execute:
@@ -25,7 +25,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install sci --pre
+    $ gem install ngs-ci --pre
 
 ## Usage
 
