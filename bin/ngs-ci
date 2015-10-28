@@ -2,10 +2,10 @@
 
 require 'trollop'
 require 'bio'
-require 'sci'
+require 'NGSCI'
 require 'yell'
 
-include SCI
+include NGSCI
 
 # Performance settings
 RUBY_GC_HEAP_GROWTH_FACTOR=2
@@ -26,7 +26,7 @@ module Kernel
   def raise(*a)
     begin
       _raise(*a)
-    rescue SCIError => e
+    rescue NGSCIError => e
       logger.error e.message
       logger.debug e.backtrace unless e.backtrace.nil?
       exit 1
@@ -36,9 +36,9 @@ end
 
 
 opts = Trollop::options do
-  version SCI::VERSION
+  version NGSCI::VERSION
   banner <<-EOS
-  SCI v#{SCI::VERSION}
+  NGSCI v#{NGSCI::VERSION}
   by Matt Ralston <mrals@udel.edu>
   DESCRIPTION:
   Calculates a complexity metric for each base in the genome,
@@ -48,11 +48,11 @@ opts = Trollop::options do
   Bug reports and feature requests at:
   http://github.com/MatthewRalston/sci
   USAGE:
-  sci --reference REFERENCE_FASTA --bam SORTED_BAM <options>
+  ngs-ci --reference REFERENCE_FASTA --bam SORTED_BAM <options>
 
   EXAMPLES:
   # compute sci for a set of reeads
-  sci --reference genome.fa --bam aligned_reads.bam
+  ngs-ci --reference genome.fa --bam aligned_reads.bam
 
 
   OPTIONS:
@@ -80,7 +80,7 @@ end
 ####################
 # Logging
 unless %w[error info warn debug].include? opts.loglevel
-  raise SCIError.new "Loglevel #{opts.loglevel} is not valid. " +
+  raise NGSCIError.new "Loglevel #{opts.loglevel} is not valid. " +
   "It must be one of: error, info, warn, debug."
 end
 
@@ -89,7 +89,7 @@ logger.level = Yell::Level.new opts.loglevel.to_sym
 # Strand specific option
 if opts.strand
   unless %w[FR RF F].include? opts.strand
-    raise SCIError.new "Strand specific option #{opts.strand} is invalid." +
+    raise NGSCIError.new "Strand specific option #{opts.strand} is invalid." +
       " It must be one of: [FR, RF, F]"
   end
 end
@@ -97,12 +97,12 @@ end
 # Bam and fasta files exist
 if opts.bam && opts.reference
   if !File.exist?(opts.bam)
-    raise SCIIOError.new "BAM file #{opts.bam} does not exist."
+    raise NGSCIIOError.new "BAM file #{opts.bam} does not exist."
   elsif !File.exist?(opts.reference)
-    raise SCIIOError.new "Fasta file #{opts.reference} does not exist."
+    raise NGSCIIOError.new "Fasta file #{opts.reference} does not exist."
   end
 else
-  raise SCIIOError.new "A sorted BAM file and a fasta file are required."
+  raise NGSCIIOError.new "A sorted BAM file and a fasta file are required."
 end
 
 ####################

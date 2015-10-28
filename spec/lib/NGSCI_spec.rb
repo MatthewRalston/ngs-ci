@@ -1,6 +1,6 @@
 require 'spec_helper'
 
-describe SCI do
+describe NGSCI do
 
   it 'will do something' do
     pending('something cool')

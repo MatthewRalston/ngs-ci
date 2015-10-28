@@ -3,7 +3,7 @@ require 'parallel'
 require 'bio-samtools'
 require 'ruby-prof'
 
-module SCI
+module NGSCI
 
   # A calculator calculates the sequencing complexity index.
   #
@@ -15,7 +15,7 @@ module SCI
     # a loaded Bio::DB::Sam object and optional thread argument.
     #
     # @param bam [Bio::DB::Sam] Opened bam file with loaded reference.
-    # @param threads [Int] The number of threads used to compute SCI.
+    # @param threads [Int] The number of threads used to compute NGSCI.
     # @param strand [String] One of [FR RF F] or nil for strandedness.
     def initialize(bam, reference, strand: nil, threads: 1)
       @block_size = 1600
@@ -31,7 +31,7 @@ module SCI
       read_length
       if strand
         unless %w(FR RF F).include?(strand)
-          raise SCI::SCIError.new "Strand specific option #{opts.strand} is invalid." +
+          raise NGSCI::NGSCIError.new "Strand specific option #{opts.strand} is invalid." +
       " It must be one of: [FR, RF, F]"
         end
         @strand = strand.downcase
@@ -79,13 +79,13 @@ module SCI
       @results = chroms
     end
 
-    # Reads a single block from the disk and calculates the SCI
+    # Reads a single block from the disk and calculates the NGSCI
     #
     # @param chrom [String] The chromosome from the bam file
     # @param i [Integer] The number of blocks that have been read
-    # @return localSCI [Hash<Symbol,Array>]
-    #   * :+ (Array[Integer]) The SCI for the + strand
-    #   * :- (Array[Integer]) The SCI for the - strand
+    # @return localNGSCI [Hash<Symbol,Array>]
+    #   * :+ (Array[Integer]) The NGSCI for the + strand
+    #   * :- (Array[Integer]) The NGSCI for the - strand
     def readblock(chrom,i)
       reads=[]
       results = @strand ? {"+" => [],"-" => []}: {nil => []}
@@ -112,7 +112,7 @@ module SCI
 
     # Calculates sequencing complexity index for a single base
     # 
-    # @param reads [Array<SCI::Read>] A group of reads aligned to a single base.
+    # @param reads [Array<NGSCI::Read>] A group of reads aligned to a single base.
     # @return sci [Float] 
     def sci(reads)
       numreads=reads.size
@@ -126,7 +126,7 @@ module SCI
 
     # Calculates summed overlap between a group of reads
     #
-    # @param reads [Array<SCI::Read>] Array of reads
+    # @param reads [Array<NGSCI::Read>] Array of reads
     # @return avg_overlap [Integer] Summed overlap between reads
     def summed_overlaps(reads)
       numreads = reads.size
@@ -147,8 +147,8 @@ module SCI
 
     # Calculation of the overlap between two reads
     # 
-    # @param read1 [SCI::Read] First read to be compared
-    # @param read2 [SCI::Read] First read to be compared
+    # @param read1 [NGSCI::Read] First read to be compared
+    # @param read2 [NGSCI::Read] First read to be compared
     # @return overlap_length [Integer] Length of overlap
     def overlap(read1,read2)
       if read1.start > read2.start
@@ -172,7 +172,7 @@ module SCI
       buffer=0
       stats=@bam.index_stats.select {|k,v| k != "*" && v[:mapped_reads] > 0}
       if stats.empty?
-        raise SCIIOError.new "BAM file is empty! Check samtools idxstats."
+        raise NGSCIIOError.new "BAM file is empty! Check samtools idxstats."
       else
         i=0
         lengths=[]
@@ -195,7 +195,7 @@ module SCI
     # Uses the @strand instance variable to determine the strand of conversion
     # 
     # @param read [Bio::DB::Alignment] Read to be converted.
-    # @return read [SCI::Read] Converted Read object
+    # @return read [NGSCI::Read] Converted Read object
     def convert(read)
       unless read.query_unmapped
         if @strand
@@ -212,7 +212,7 @@ module SCI
     # Assumes paired-end strand-specific sequencing with "fr" chemistry
     # 
     # @param read [Bio::DB::Alignment] Read to be converted.
-    # @return read [SCI::Read] Converted Read object
+    # @return read [NGSCI::Read] Converted Read object
     def fr(read)
       if read.first_in_pair
         read.query_strand ? newread(read,strand:"+") : newread(read,strand:"-")
@@ -226,7 +226,7 @@ module SCI
     # Assumes paired-end strand-specific sequencing with "rf" chemistry
     # 
     # @param read [Bio::DB::Alignment] Read to be converted.
-    # @return read [SCI::Read] Converted Read object
+    # @return read [NGSCI::Read] Converted Read object
     def rf(read)
       if read.first_in_pair
         read.query_strand ? newread(read,strand:"-") : newread(read,strand:"+")
@@ -240,7 +240,7 @@ module SCI
     # Assumes single-end strand-specific sequencing with "f" chemistry
     # 
     # @param read [Bio::DB::Alignment] Read to be converted.
-    # @return read [SCI::Read] Converted Read object
+    # @return read [NGSCI::Read] Converted Read object
     def f(read)
       read.query_strand ? newread(read,strand:"+") : newread(read,strand:"-")
     end
@@ -249,7 +249,7 @@ module SCI
     #
     # @param read [Bio::DB::Alignment] Aligned read to be converted
     # @param strand [String] Strand of read
-    # @return read [SCI::Read] Converted Read object
+    # @return read [NGSCI::Read] Converted Read object
     def newread(read,strand: nil)
       Read.new(read.pos,read.pos+read.seq.size,strand: strand)
     end
@@ -271,7 +271,7 @@ module SCI
     def export(outfile)
       if @results
         File.open(outfile,'w') do |file|
-          file.puts("Chrom,Base,Strand,Depth,Unique_Reads,Overlap,SCI")
+          file.puts("Chrom,Base,Strand,Depth,Unique_Reads,Overlap,NGS-CI")
           @results.each do |chrom,results|
             results.each do |strand,val|
               val.each do |x|

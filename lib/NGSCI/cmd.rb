@@ -1,6 +1,6 @@
 require 'open3'
 
-module SCI
+module NGSCI
 
   class Cmd
 

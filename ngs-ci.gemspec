@@ -2,14 +2,14 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'sci/version'
+require 'NGSCI/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "sci"
-  spec.version       = SCI::VERSION
+  spec.name          = "ngs-ci"
+  spec.version       = NGSCI::VERSION
   spec.authors       = ["Matthew Ralston"]
   spec.email         = ["mrals89@gmail.com"]
-  spec.summary       = %q{Sequencing Complexity Index.}
+  spec.summary       = %q{Next Generation Sequencing Complexity Index.}
   spec.description   = %q{Calculated a metric that estimates read complexity at each base for RNA-seq BAM files. Alternative to pileup format.}
   spec.homepage      = ""
   spec.license       = "GPL v3"

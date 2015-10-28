@@ -1,7 +1,7 @@
 require 'coveralls'
 Coveralls.wear!
 
-require 'SCI'
+require 'NGSCI'
 
 
 RSpec.configure do |config|

@@ -11,7 +11,7 @@ testout="spec/test_files/testfile.txt"
 describe "#run" do
   context "during a strand specific run" do
     before(:each) do
-      @calc=SCI::Calculator.new(testbam,testfasta,strand:"FR")
+      @calc=NGSCI::Calculator.new(testbam,testfasta,strand:"FR")
       @testchrom=@calc.chroms.keys[0]
     end
     it "returns a hash" do
@@ -23,14 +23,14 @@ describe "#run" do
     it "returns the hash with keys for each strand" do
       expect(@calc.run[@testchrom].keys).to eq(%w(+ -))
     end
-    it "returns SCI for each base of the genome" do
+    it "returns NGSCI for each base of the genome" do
       expect(@calc.run[@testchrom]["+"].size).to eq(@calc.chroms[@testchrom])
     end
   end
 
   context "during an unstranded run" do
     before(:each) do
-      @calc=SCI::Calculator.new(testbam,testfasta)
+      @calc=NGSCI::Calculator.new(testbam,testfasta)
       @testchrom=@calc.chroms.keys[0]
     end
     it "returns the hash with keys of the chromosomes names" do
@@ -39,7 +39,7 @@ describe "#run" do
     it "returns the hash with a nil strand key" do
       expect(@calc.run[@testchrom].keys[0]).to be nil
     end
-    it "returns SCI for each base of the genome" do
+    it "returns NGSCI for each base of the genome" do
       expect(@calc.run[@testchrom][nil].size).to eq(@calc.chroms[@testchrom])
     end
   end
@@ -48,7 +48,7 @@ end
 describe "#readblock" do
   context "when reading the first block" do
     it "returns a hash with an array of length @block_size" do
-      @calc=SCI::Calculator.new(testbam,testfasta)
+      @calc=NGSCI::Calculator.new(testbam,testfasta)
       results=@calc.readblock(@calc.chroms.keys[0],0)
       result_length=results[results.keys[0]].size
       expect(result_length).to eq(@calc.block_size)
@@ -56,7 +56,7 @@ describe "#readblock" do
   end
   context "when reading any other block" do
     it "returns a hash with and array of length @block_size" do
-      @calc=SCI::Calculator.new(testbam,testfasta)
+      @calc=NGSCI::Calculator.new(testbam,testfasta)
       results=@calc.readblock(@calc.chroms.keys[0],1)
       result_length=results[results.keys[0]].size
       expect(result_length).to eq(@calc.block_size)      
@@ -67,7 +67,7 @@ end
 describe "#sci" do
   context "when passed an array of read objects" do
     before(:each) do
-      @calc = SCI::Calculator.new(testbam,testfasta)
+      @calc = NGSCI::Calculator.new(testbam,testfasta)
       @bam = Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
       @bam.open
       @reads = []
@@ -83,7 +83,7 @@ describe "#sci" do
   end
   context "when passed an empty array" do
     it "returns nil" do
-      @calc = SCI::Calculator.new(testbam,testfasta)
+      @calc = NGSCI::Calculator.new(testbam,testfasta)
       empty_sci = @calc.sci([])[-1]
       expect(empty_sci).to be_zero
     end
@@ -92,11 +92,11 @@ end
 
 describe "#read_length" do
   it "calculates the read length" do
-    @calc=SCI::Calculator.new(testbam,testfasta)
+    @calc=NGSCI::Calculator.new(testbam,testfasta)
     expect(@calc.buffer).to eq(76)
   end
   it "fails on an empty bam file" do
-    expect{SCI::Calculator.new(emptybam,testfasta)}.to raise_error(SCI::SCIIOError)
+    expect{NGSCI::Calculator.new(emptybam,testfasta)}.to raise_error(NGSCI::NGSCIIOError)
     `rm #{emptybam}.bai`
   end
 end
@@ -106,7 +106,7 @@ describe "#summed_overlaps" do
     @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
     @bam.open
     @reads = []
-    @calc=SCI::Calculator.new(testbam,testfasta)
+    @calc=NGSCI::Calculator.new(testbam,testfasta)
     @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
     @reads = @reads.uniq{|r| r.start}
     expect(@calc.summed_overlaps(@reads)).to be_an(Integer)
@@ -116,7 +116,7 @@ describe "#summed_overlaps" do
       @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
       @bam.open
       @reads = []
-      @calc=SCI::Calculator.new(testbam,testfasta)
+      @calc=NGSCI::Calculator.new(testbam,testfasta)
       @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
       @reads = @reads.uniq{|r| r.start}
     end
@@ -134,14 +134,14 @@ describe "#summed_overlaps" do
       @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
       @bam.open
       @reads=[]
-      @calc=SCI::Calculator.new(testbam,testfasta)
+      @calc=NGSCI::Calculator.new(testbam,testfasta)
       @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
       expect(@calc.summed_overlaps([@reads[0]])).to be_zero
     end
   end
   context "when passed an empty array" do
     it "returns zero" do
-      @calc=SCI::Calculator.new(testbam,testfasta)
+      @calc=NGSCI::Calculator.new(testbam,testfasta)
       expect(@calc.summed_overlaps([])).to be_zero
     end
   end
@@ -153,7 +153,7 @@ describe "#overlap" do
     @bam.open
     @reads=[]
     @bam.fetch("NC_001988.2",0,200) {|x| @reads << x}
-    @calc=SCI::Calculator.new(testbam,testfasta)
+    @calc=NGSCI::Calculator.new(testbam,testfasta)
     @read1=@calc.convert(@reads[2])
     @read2=@calc.convert(@reads[3])
   end
@@ -168,7 +168,7 @@ end
 
 describe '#reference_sequences' do
   before(:each) do
-    @calc=SCI::Calculator.new(testbam,testfasta)
+    @calc=NGSCI::Calculator.new(testbam,testfasta)
   end
 
   it "retrieves reference sequences" do
@@ -182,11 +182,11 @@ describe '#newread' do
     @bam.open
     @reads=[]
     @bam.fetch("NC_001988.2",0,200) {|x| @reads << x}
-    @calc=SCI::Calculator.new(testbam,testfasta)
+    @calc=NGSCI::Calculator.new(testbam,testfasta)
   end
 
   it "converts an alignment object to a read object" do
-    expect(@calc.newread(@reads[0])).to be_instance_of SCI::Read
+    expect(@calc.newread(@reads[0])).to be_instance_of NGSCI::Read
   end  
 end
 
@@ -196,7 +196,7 @@ describe "#fr" do
     @bam.open
     @reads=[]
     @bam.fetch("NC_001988.2",0,200) {|x| @reads << x}
-    @calc=SCI::Calculator.new(testbam,testfasta)
+    @calc=NGSCI::Calculator.new(testbam,testfasta)
     @testpair=[@reads[5],@reads[10]]
   end
 
@@ -216,7 +216,7 @@ describe "#rf" do
     @bam.open
     @reads=[]
     @bam.fetch("NC_001988.2",0,200) {|x| @reads << x}
-    @calc=SCI::Calculator.new(testbam,testfasta)
+    @calc=NGSCI::Calculator.new(testbam,testfasta)
     @testpair=[@reads[5],@reads[10]]
   end
   it "converts the first read with RF chemistry" do
@@ -236,7 +236,7 @@ describe "#f" do
     @bam.open
     @reads=[]
     @bam.fetch("NC_001988.2",0,200) {|x| @reads << x}
-    @calc=SCI::Calculator.new(testbam,testfasta)
+    @calc=NGSCI::Calculator.new(testbam,testfasta)
     @testpair=[@reads[5],@reads[10]]
   end
   it "converts a read with F chemistry on the + strand" do
@@ -258,35 +258,35 @@ describe '#convert' do
     @bam.fetch("NC_001988.2",0,200) {|x| @reads << x}
   end
   it "converts an alignment object to a read object" do
-    calc=SCI::Calculator.new(testbam,testfasta)
-    expect(calc.convert(@reads[2])).to be_instance_of SCI::Read
+    calc=NGSCI::Calculator.new(testbam,testfasta)
+    expect(calc.convert(@reads[2])).to be_instance_of NGSCI::Read
   end
 
   it "returns nil for an unmapped read" do
-    calc=SCI::Calculator.new(testbam,testfasta)
+    calc=NGSCI::Calculator.new(testbam,testfasta)
     expect(calc.convert(@reads[1])).to be_nil
   end
 
   it "converts the first read in FR chemistry aligned to the + strand" do
-    calc=SCI::Calculator.new(testbam,testfasta,strand:"FR")
+    calc=NGSCI::Calculator.new(testbam,testfasta,strand:"FR")
     testpair=[@reads[5],@reads[10]]
     first=calc.convert(testpair[1])
     expect(first.strand).to eq("+")
   end
   it "converts the second read in FR chemistry aligned to the - strand" do
-    calc=SCI::Calculator.new(testbam,testfasta,strand:"FR")
+    calc=NGSCI::Calculator.new(testbam,testfasta,strand:"FR")
     testpair=[@reads[5],@reads[10]]
     second=calc.convert(testpair[0])
     expect(second.strand).to eq("+")
   end
   it "converts the first read in RF chemistry aligned to the + strand" do
-    calc=SCI::Calculator.new(testbam,testfasta,strand:"RF")
+    calc=NGSCI::Calculator.new(testbam,testfasta,strand:"RF")
     testpair=[@reads[5],@reads[10]]
     first=calc.convert(testpair[1])
     expect(first.strand).to eq("-")
   end
   it "converts the second read in FR chemistry aligned to the - strand" do
-    calc=SCI::Calculator.new(testbam,testfasta,strand:"RF")
+    calc=NGSCI::Calculator.new(testbam,testfasta,strand:"RF")
     testpair=[@reads[5],@reads[10]]
     second=calc.convert(testpair[0])
     expect(second.strand).to eq("-")
@@ -297,7 +297,7 @@ end
 describe "#export" do
   context "calculator has not run" do
     it "returns nil" do
-      calc=SCI::Calculator.new(testbam,testfasta)
+      calc=NGSCI::Calculator.new(testbam,testfasta)
       expect(calc.export(testout)).to be nil
     end
   end
@@ -306,7 +306,7 @@ describe "#export" do
       `rm #{testout}`
     end
     it "returns outfile" do
-      calc=SCI::Calculator.new(testbam,testfasta)
+      calc=NGSCI::Calculator.new(testbam,testfasta)
       calc.run
       expect(calc.export(testout)).to eq(testout)
     end

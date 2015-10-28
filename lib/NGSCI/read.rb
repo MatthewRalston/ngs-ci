@@ -1,4 +1,4 @@
-module SCI
+module NGSCI
 
   # A simple read class
   #
@@ -10,16 +10,16 @@ module SCI
     def initialize(start,stop,strand: nil)
 =begin DEPRECATED chromosome variable
       unless chr.is_a?(String)
-        raise SCIError.new "Invalid chromosome argument:\n"
+        raise NGSCIError.new "Invalid chromosome argument:\n"
         "chr:#{chr}\tstart:#{start}\tstop:#{stop}\tstrand:#{strand}"
       end
 =end
       unless start.is_a?(Integer) && stop.is_a?(Integer) && stop > start
-        raise SCIError.new "Invalid coordinate arguments:\n"
+        raise NGSCIError.new "Invalid coordinate arguments:\n"
         "chr:#{chr}\tstart:#{start}\tstop:#{stop}\tstrand:#{strand}"
       end
       if strand && !%w(+ -).include?(strand)
-        raise SCIError.new "Invalid strand argument:\n"
+        raise NGSCIError.new "Invalid strand argument:\n"
         "chr:#{chr}\tstart:#{start}\tstop:#{stop}\tstrand:#{strand}"
       end
       @start=start
