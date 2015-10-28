@@ -26,8 +26,8 @@ Gem::Specification.new do |spec|
   spec.add_dependency "ruby-prof", "~> 0.15"
   spec.has_rdoc = 'yard'
 
-  #spec.add_development_dependency "bundler"
-  #spec.add_development_dependency "rake", "~> 10.0"
+  spec.add_development_dependency "bundler"
+  spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "rspec", "~> 3.1"
   #spec.add_development_dependency "guard", "~> 2.12"
   spec.add_development_dependency "coveralls"
