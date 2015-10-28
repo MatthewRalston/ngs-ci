@@ -1,7 +1,7 @@
 require 'bio'
-require 'ruby-prof'
 require 'parallel'
 require 'bio-samtools'
+require 'ruby-prof'
 
 module SCI
 

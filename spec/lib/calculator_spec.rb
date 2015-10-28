@@ -71,7 +71,7 @@ describe "#sci" do
       @bam = Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
       @bam.open
       @reads = []
-      @bam.fetch("NC_001988.2",75,75){|x| @reads << @calc.convert(x)}
+      @bam.fetch("NC_001988.2",75,75){|x| read = @calc.convert(x); @reads << read unless read.nil?}
       @reads = @reads.uniq{|r|r.start}
     end
     it "returns an array" do
