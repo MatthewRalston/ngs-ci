@@ -2,10 +2,10 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'SCI/version'
+require 'sci/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "SCI"
+  spec.name          = "sci"
   spec.version       = SCI::VERSION
   spec.authors       = ["Matthew Ralston"]
   spec.email         = ["mrals89@gmail.com"]

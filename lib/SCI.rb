@@ -1,6 +1,6 @@
 require 'yell'
 
-# SCI stands for Library Complexity Index
+# SCI stands for Sequencing Complexity Index
 # This program calculates a sequencing complexity index for each base and/or strand in a genome.
 # This program calculates this by averaging average overlaps of reads aligned to that base.
 module SCI

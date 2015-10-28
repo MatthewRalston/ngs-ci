@@ -2,7 +2,7 @@
 
 require 'trollop'
 require 'bio'
-require 'SCI'
+require 'sci'
 require 'yell'
 
 include SCI
@@ -39,20 +39,20 @@ opts = Trollop::options do
   version SCI::VERSION
   banner <<-EOS
   SCI v#{SCI::VERSION}
-  by Matt Ralston <mrals89@gmail.com
+  by Matt Ralston <mrals@udel.edu>
   DESCRIPTION:
   Calculates a complexity metric for each base in the genome,
   an alternative to pileup format.
   The complexity metric is calculated for each base in the genome as the product of a read-length normalized average read overlap and a read-length normalized number of unique reads.
 
   Bug reports and feature requests at:
-  http://github.com/MatthewRalston/SCI
+  http://github.com/MatthewRalston/sci
   USAGE:
-  SCI --reference REFERENCE_FASTA --bam SORTED_BAM <options>
+  sci --reference REFERENCE_FASTA --bam SORTED_BAM <options>
 
   EXAMPLES:
   # compute sci for a set of reeads
-  SCI --reference genome.fa --bam aligned_reads.bam
+  sci --reference genome.fa --bam aligned_reads.bam
 
 
   OPTIONS:
