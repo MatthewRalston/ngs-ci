@@ -36,7 +36,7 @@ Or install manually:
 
 ## Usage
 
-TODO: Write usage instructions here
+* See ```--help``` for details. More to come.
 
 ## Contributing
 
