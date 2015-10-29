@@ -1,12 +1,12 @@
-[![Build Status](https://travis-ci.org/MatthewRalston/SCI.png?branch=master)](https://travis-ci.org/MatthewRalston/SCI)
+[![Build Status](https://travis-ci.org/MatthewRalston/ngs-ci.png?branch=master)](https://travis-ci.org/MatthewRalston/ngs-ci)
 
-[![Gem Version](https://badge.fury.io/rb/SCI.png)](http://badge.fury.io/rb/SCI)
+[![Gem Version](https://badge.fury.io/rb/ngs-ci.png)](http://badge.fury.io/rb/ngs-ci)
 
-[![Coverage Status](https://coveralls.io/repos/MatthewRalston/SCI/badge.png)](https://coveralls.io/r/MatthewRalston/SCI)
+[![Coverage Status](https://coveralls.io/repos/MatthewRalston/ngs-ci/badge.png)](https://coveralls.io/r/MatthewRalston/ngs-ci)
 
 
 
-# SCI
+# NGS Complexity Index
 
 NOTE: This is a project in progress. 
 This gem will calculate a sequencing complexity index for BAM files.
@@ -26,6 +26,13 @@ And then execute:
 Or install it yourself as:
 
     $ gem install ngs-ci --pre
+
+Or install manually:
+
+    $ git clone https://github.com/MatthewRalston/ngs-ci.git
+    $ cd ngs-ci
+    $ gem build ngs-ci.gemspec
+    $ gem install ngs-ci-[Version].gem
 
 ## Usage
 
