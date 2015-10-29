@@ -2,7 +2,7 @@
 
 [![Gem Version](https://badge.fury.io/rb/ngs-ci.png)](http://badge.fury.io/rb/ngs-ci)
 
-[![Coverage Status](https://coveralls.io/repos/MatthewRalston/ngs-ci/badge.png)](https://coveralls.io/r/MatthewRalston/ngs-ci)
+[![Coverage Status](https://coveralls.io/repos/MatthewRalston/ngs-ci/badge.svg?branch=master&service=github)](https://coveralls.io/github/MatthewRalston/ngs-ci?branch=master)
 
 
 
