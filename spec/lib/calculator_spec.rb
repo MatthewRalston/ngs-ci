@@ -107,7 +107,7 @@ describe "#summed_overlaps" do
     @bam.open
     @reads = []
     @calc=NGSCI::Calculator.new(testbam,testfasta)
-    @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
+    @bam.fetch("NC_001988.2",8,75) {|x| @reads << @calc.convert(x) }
     @reads = @reads.uniq{|r| r.start}
     expect(@calc.summed_overlaps(@reads)).to be_an(Integer)
   end
@@ -120,12 +120,12 @@ describe "#summed_overlaps" do
       @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
       @reads = @reads.uniq{|r| r.start}
     end
-    it "returns the #overlap of two reads" do
+    it "returns twice the #overlap of two reads" do
       summed_overlap = 2*@calc.overlap(@reads[0],@reads[1])
       expect(@calc.summed_overlaps(@reads[0..1])).to eq(summed_overlap)
     end
 
-    it "calculates the average overlap between a group of reads" do
+    it "calculates the summed overlap between a group of reads" do
       expect(@calc.summed_overlaps(@reads[0..7]).round(4)).to eq(380.0)
     end
   end
@@ -163,6 +163,74 @@ describe "#overlap" do
 
   it "calculates the overlap regardless of order" do
     expect(@calc.overlap(@read2,@read1)).to eq(14)
+  end
+end
+
+describe "#summed_dissimilarity" do
+  it "returns an int" do
+    @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
+    @bam.open
+    @reads = []
+    @calc=NGSCI::Calculator.new(testbam,testfasta)
+    @bam.fetch("NC_001988.2",8,75) {|x| @reads << @calc.convert(x) }
+    @reads = @reads.uniq{|r| r.start}
+    expect(@calc.summed_dissimilarity(@reads)).to be_an(Integer)
+  end
+  context "when passed an array of read objects" do
+    before(:each) do
+      @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
+      @bam.open
+      @reads = []
+      @calc=NGSCI::Calculator.new(testbam,testfasta)
+      @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
+      @reads = @reads.uniq{|r| r.start}
+    end
+    context "when passed two reads" do
+      it "returns the sum of their dissimilarities" do
+        summed_dissimilarity = @calc.dissimilarity(@reads[0],@reads[1]) + @calc.dissimilarity(@reads[1],@reads[0])
+        expect(@calc.summed_dissimilarity(@reads[0..1])).to eq(summed_dissimilarity)
+      end
+    end
+
+    it "calculates the summed dissimlarity of a group of reads" do
+      expect(@calc.summed_dissimilarity(@reads[0..7]).round(4)).to eq(380.0)
+    end
+  end
+  context "when passed an array with a single read object" do
+    it "returns zero" do
+      @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
+      @bam.open
+      @reads=[]
+      @calc=NGSCI::Calculator.new(testbam,testfasta)
+      @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
+      expect(@calc.summed_dissimilarity([@reads[0]])).to be_zero
+    end
+  end
+  context "when passed an empty array" do
+    it "returns zero" do
+      @calc=NGSCI::Calculator.new(testbam,testfasta)
+      expect(@calc.summed_dissimilarity([])).to be_zero
+    end
+  end
+end
+
+describe "#dissimilarity" do
+  before(:each) do
+    @bam=Bio::DB::Sam.new(:bam => testbam, :fasta => testfasta)
+    @bam.open
+    @reads = []
+    @bam.fetch("NC_001988.2",0,200) {|x| @reads << x }
+    @calc = NGSCI::Calculator.new(testbam,testfasta)
+    @read1 = @calc.convert(@reads[2])
+    @read2 = @calc.convert(@reads[3])
+  end
+
+  it "calculates the unique bases of the first read from the second" do
+    expect(@calc.dissimilarity(@read1,@read2)).to eq(62)
+  end
+
+  it "calculates the unique bases, regardless of the order" do
+    expect(@calc.dissimilarity(@read2,@read1)).to eq(62)
   end
 end
 

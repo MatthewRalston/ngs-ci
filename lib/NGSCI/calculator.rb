@@ -148,7 +148,7 @@ module NGSCI
     # Calculation of the overlap between two reads
     # 
     # @param read1 [NGSCI::Read] First read to be compared
-    # @param read2 [NGSCI::Read] First read to be compared
+    # @param read2 [NGSCI::Read] Second read to be compared
     # @return overlap_length [Integer] Length of overlap
     def overlap(read1,read2)
       if read1.start > read2.start
@@ -162,6 +162,48 @@ module NGSCI
           read2.stop - read2.start
         else # Normal overlap
           read1.stop - read2.start
+        end
+      end
+    end
+
+    # Calculates summed dissimilarity between a group of reads
+    #
+    # @param reads [Array<NGSCI::Read>] Array of reads
+    # @return avg_dissimilarity [Integer] Summed dissimilarity between reads
+    def summed_dissimilarity(reads)
+      numreads = reads.size
+      sum=0
+      unless numreads <= 1
+        i = 0
+        while i < numreads
+          r1 = reads[i] # for each of n reads
+          sum+=reads.
+                reject{|r| r == r1}. # select the n-1 other reads
+                map{|r| dissimilarity(r,r1)}. # calculate their overlap to r1
+                reduce(:+)
+          i+=1
+        end
+      end
+      return sum
+    end
+
+    # Calculation of the dissimilarity between two reads
+    #
+    # @param read1 [NGSCI::Read]  First read to be compared
+    # @param read2 [NGSCI::Read]  Second read to be compared
+    # @return unique_bases [Integer] Length of non-overlapping bases
+    def dissimilarity(read1,read2)
+      if read1.start > read2.start
+        if read1.stop < read2.stop # Read 1 is inside read 2
+          (read1.start - read2.start) + (read2.stop - read1.stop)
+        else # Normal overlap
+          read1.start - read2.start
+        end
+      else
+        if read1.stop > read2.stop # Read 2 is inside read 1
+          (read2.start - read1.start) + (read1.stop - read2.stop)
+        else # Normal overlap
+          read2.start - read1.start
         end
       end
     end
