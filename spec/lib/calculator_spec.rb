@@ -193,7 +193,7 @@ describe "#summed_dissimilarity" do
     end
 
     it "calculates the summed dissimlarity of a group of reads" do
-      expect(@calc.summed_dissimilarity(@reads[0..7]).round(4)).to eq(380.0)
+      expect(@calc.summed_dissimilarity(@reads[0..7]).round(4)).to eq(532.0)
     end
   end
   context "when passed an array with a single read object" do
