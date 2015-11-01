@@ -7,7 +7,6 @@ testfasta="spec/test_files/test.fa"
 testout="spec/test_files/testfile.txt"
 
 
-
 describe "#run" do
   context "during a strand specific run" do
     before(:each) do
@@ -92,12 +91,43 @@ end
 
 describe "#read_length" do
   it "calculates the read length" do
-    @calc=NGSCI::Calculator.new(testbam,testfasta)
-    expect(@calc.buffer).to eq(76)
+    @bam=Bio::DB::Sam.new(:bam => testbam,:fasta => testfasta)
+    test_block_size = 100
+    expect(NGSCI::Calculator.read_length(@bam,100)).to eq(76)
   end
+
   it "fails on an empty bam file" do
-    expect{NGSCI::Calculator.new(emptybam,testfasta)}.to raise_error(NGSCI::NGSCIIOError)
+    @emptybam = Bio::DB::Sam.new(:bam => emptybam, :fasta => testfasta)
+    expect{NGSCI::Calculator.read_length(@emptybam,100)}.to raise_error(NGSCI::NGSCIIOError)
     `rm #{emptybam}.bai`
+  end
+end
+
+describe "#denominator_calc" do
+  
+end
+
+describe "#max_avg_summed_dissimilarity_per_read" do
+
+  context "calculating the average summed dissimilarity" do
+    before(:each) do
+      @read_length = 76
+    end
+    it "yields the triangular sum dissimilarity" do
+      def tri(x,n=0)
+        return x == 0 ? n : tri(x-1,n+x)
+      end
+      triangular_sums = (1..@read_length).to_a.map{|x| 
+        tri(@read_length - x) + tri(x - 1)
+      }
+      avg_triangular_sum = triangular_sums.reduce(:+)/@read_length
+      calculated_max_summed_dissimilarity = NGSCI::Calculator.max_avg_summed_dissimilarity_per_read(@read_length)
+      expect(calculated_max_summed_dissimilarity).to eq(avg_triangular_sum)
+    end
+    it "is equal to 1/3 times (read_length - 1)" do
+      calculated_max_summed_dissimilarity = NGSCI::Calculator.max_avg_summed_dissimilarity_per_read(@read_length)
+      expect(calculated_max_summed_dissimilarity).to eq((1/3)*(@read_length-1))
+    end
   end
 end
 

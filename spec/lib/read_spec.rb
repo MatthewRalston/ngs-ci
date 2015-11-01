@@ -44,6 +44,10 @@ describe NGSCI::Read do
     it "has a stop attribute" do
       expect(@read.methods).to include(:stop)
     end
+
+    it "has a length attribute" do
+      expect(@read.methods).to include(:length)
+    end
   
     it "has a strand attribute" do
       expect(@read.methods).to include(:strand)

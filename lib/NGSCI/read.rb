@@ -4,9 +4,10 @@ module NGSCI
   #
   # @!attribute [r] start
   # @!attribute [r] stop
+  # @!attribute [r] length
   # @!attribute [r] strand
   class Read
-    attr_reader :start, :stop, :strand
+    attr_reader :start, :stop, :length, :strand
     def initialize(start,stop,strand: nil)
 =begin DEPRECATED chromosome variable
       unless chr.is_a?(String)
@@ -24,8 +25,8 @@ module NGSCI
       end
       @start=start
       @stop=stop
+      @length=stop-start
       @strand=strand
     end
-
   end
 end
