@@ -33,7 +33,7 @@ module NGSCI
       @bam.open
       @threads = threads
       @chroms = reference_sequences(reference)
-      @read_length = read_length(@bam)
+      @read_length = NGSCI::Calculator.read_length_calc(@bam,@block_size)
       @denominator = denominator_calc(@read_length)
       if strand
         unless %w(FR RF F).include?(strand)
@@ -95,10 +95,10 @@ module NGSCI
     def readblock(chrom,i)
       reads=[]
       results = @strand ? {"+" => [],"-" => []}: {nil => []}
-      start = [0,(i * @block_size) - @buffer].max
+      start = [0,(i * @block_size) - @read_length].max
       stop = [(i + 1) * @block_size, self.chroms[chrom]].min
       @bam.fetch(chrom,start,stop) {|read| reads << convert(read)}
-      start += @buffer unless start == 0
+      start += @read_length unless start == 0
       reads.compact!
       reads.sort_by!(&:start) unless reads.empty?
       x=0
@@ -118,17 +118,15 @@ module NGSCI
     # Calculates sequencing complexity index for a single base
     # 
     # @param reads [Array<NGSCI::Read>] A group of reads aligned to a single base.
-    # @return localNGSCI [Hash<Symbol,Array>]
-    #   * :+ (Array[Integer]) The NGSCI for the + strand
-    #   * :- (Array[Integer]) The NGSCI for the - strand
+    # @return localNGSCI [Array<Integer,Integer,Float,Float>]
     def sci(reads)
       numreads=reads.size
       # Groups reads by start site
       # selects the largest read length from the groups
       reads = reads.group_by(&:start).map{|k,v| v.max{|x,y| x.length <=> y.length}}
-      o = summed_dissimilarity(reads)
+      d = summed_dissimilarity(reads)
       uniquereads = reads.size
-      return [numreads,uniquereads,(@buffer*o.to_f/@denom).round(4),(300*uniquereads*o/(2*@denom)).round(4)]
+      return [numreads,uniquereads,d.to_f/@read_length,uniquereads*d/@denominator]
     end
 
 
@@ -179,7 +177,7 @@ module NGSCI
     # @param [Bio::DB::Sam] bam A bam reader object
     # @param [Integer] block_size The number of reads to read from a bam file
     # @return [Integer] read_length The read length acquired from reading a block at a time until at least 100 reads are acquired
-    def read_length(bam,block_size)
+    def self.read_length_calc(bam,block_size)
       stats=bam.index_stats.select {|k,v| k != "*" && v[:mapped_reads] > 0}
       if stats.empty?
         raise NGSCIIOError.new "BAM file is empty! Check samtools idxstats."
@@ -202,9 +200,9 @@ module NGSCI
     # Calculates the denominator for the complexity index from the read length, assuming maximum saturation (i.e. number of unique reads == read_length)
     #
     # @param [Integer] read_length The read length
-    # @return [Integer] denominator The denominator including normalization factors for the complexity index
+    # @return [Float] denominator The denominator including normalization factors for the complexity index
     def denominator_calc(read_length)
-      read_length*3*max_avg_summed_dissimilarity_per_read(read_length)/(read_length - 1)
+      read_length*3*max_avg_summed_dissimilarity_per_read(read_length)/(read_length - 1).to_f
     end
 
     # Calculates the average summed dissimilarity (per read) of that read to all other reads
@@ -213,9 +211,8 @@ module NGSCI
     # @return [Integer] avg_summed_dissimilarity
     def max_avg_summed_dissimilarity_per_read(read_length)
       # For each unique read under maximum saturation, calculate the sum of dissimilarities for that read to all other reads
-      summed_dissimilarities = (1..read_length).to_a.map do |r| 
-        (read_length ** 2) / 2 - read_length*x + read_length/2 + x**2 - x
-      end
+      summed_dissimilarities = (1..read_length).to_a.map { |r| 
+        (read_length ** 2) / 2 - read_length*r + read_length/2 + r**2 - r }
       # Return the average summed_dissimilarity by summation and division by the number of unique reads
       summed_dissimilarities.reduce(:+)/read_length
     end

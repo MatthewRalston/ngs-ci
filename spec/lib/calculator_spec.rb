@@ -89,22 +89,33 @@ describe "#sci" do
   end
 end
 
-describe "#read_length" do
+describe "#read_length_calc" do
   it "calculates the read length" do
     @bam=Bio::DB::Sam.new(:bam => testbam,:fasta => testfasta)
     test_block_size = 100
-    expect(NGSCI::Calculator.read_length(@bam,100)).to eq(76)
+    expect(NGSCI::Calculator.read_length_calc(@bam,100)).to eq(76)
   end
 
   it "fails on an empty bam file" do
     @emptybam = Bio::DB::Sam.new(:bam => emptybam, :fasta => testfasta)
-    expect{NGSCI::Calculator.read_length(@emptybam,100)}.to raise_error(NGSCI::NGSCIIOError)
+    expect{NGSCI::Calculator.read_length_calc(@emptybam,100)}.to raise_error(NGSCI::NGSCIIOError)
     `rm #{emptybam}.bai`
   end
 end
 
 describe "#denominator_calc" do
-  
+  context "when passed and integer read length" do
+    before(:each) do
+      @read_length = 76
+      @calc = NGSCI::Calculator.new(testbam,testfasta)
+    end
+    it "returns a float denominator" do
+      expect(@calc.denominator_calc(@read_length)).to be_instance_of Float
+    end
+    it "returns the correct denominator for 76bp read length" do
+      expect(@calc.denominator_calc(@read_length)).to eq(5852)
+    end
+  end
 end
 
 describe "#max_avg_summed_dissimilarity_per_read" do
@@ -112,6 +123,7 @@ describe "#max_avg_summed_dissimilarity_per_read" do
   context "calculating the average summed dissimilarity" do
     before(:each) do
       @read_length = 76
+      @calc = NGSCI::Calculator.new(testbam,testfasta)
     end
     it "yields the triangular sum dissimilarity" do
       def tri(x,n=0)
@@ -121,80 +133,22 @@ describe "#max_avg_summed_dissimilarity_per_read" do
         tri(@read_length - x) + tri(x - 1)
       }
       avg_triangular_sum = triangular_sums.reduce(:+)/@read_length
-      calculated_max_summed_dissimilarity = NGSCI::Calculator.max_avg_summed_dissimilarity_per_read(@read_length)
+      calculated_max_summed_dissimilarity = @calc.max_avg_summed_dissimilarity_per_read(@read_length)
       expect(calculated_max_summed_dissimilarity).to eq(avg_triangular_sum)
     end
+  end
+  context "when averaging for all 'other' reads" do
+    before(:each) do
+      @read_length = 76
+      @calc = NGSCI::Calculator.new(testbam,testfasta)
+    end
     it "is equal to 1/3 times (read_length - 1)" do
-      calculated_max_summed_dissimilarity = NGSCI::Calculator.max_avg_summed_dissimilarity_per_read(@read_length)
+      calculated_max_summed_dissimilarity = @calc.max_avg_summed_dissimilarity_per_read(@read_length)/(@read_length-1).to_f
       expect(calculated_max_summed_dissimilarity).to eq((1/3)*(@read_length-1))
     end
   end
 end
 
-describe "#summed_overlaps" do
-  it "returns an int" do
-    @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
-    @bam.open
-    @reads = []
-    @calc=NGSCI::Calculator.new(testbam,testfasta)
-    @bam.fetch("NC_001988.2",8,75) {|x| @reads << @calc.convert(x) }
-    @reads = @reads.uniq{|r| r.start}
-    expect(@calc.summed_overlaps(@reads)).to be_an(Integer)
-  end
-  context "when passed an array of read objects" do
-    before(:each) do
-      @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
-      @bam.open
-      @reads = []
-      @calc=NGSCI::Calculator.new(testbam,testfasta)
-      @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
-      @reads = @reads.uniq{|r| r.start}
-    end
-    it "returns twice the #overlap of two reads" do
-      summed_overlap = 2*@calc.overlap(@reads[0],@reads[1])
-      expect(@calc.summed_overlaps(@reads[0..1])).to eq(summed_overlap)
-    end
-
-    it "calculates the summed overlap between a group of reads" do
-      expect(@calc.summed_overlaps(@reads[0..7]).round(4)).to eq(380.0)
-    end
-  end
-  context "when passed an array with a single read object" do
-    it "returns zero" do
-      @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
-      @bam.open
-      @reads=[]
-      @calc=NGSCI::Calculator.new(testbam,testfasta)
-      @bam.fetch("NC_001988.2",8,75) {|x| read=@calc.convert(x); @reads << read if read}
-      expect(@calc.summed_overlaps([@reads[0]])).to be_zero
-    end
-  end
-  context "when passed an empty array" do
-    it "returns zero" do
-      @calc=NGSCI::Calculator.new(testbam,testfasta)
-      expect(@calc.summed_overlaps([])).to be_zero
-    end
-  end
-end
-
-describe "#overlap" do
-  before(:each) do
-    @bam=Bio::DB::Sam.new(:bam=>testbam,:fasta=>testfasta)
-    @bam.open
-    @reads=[]
-    @bam.fetch("NC_001988.2",0,200) {|x| @reads << x}
-    @calc=NGSCI::Calculator.new(testbam,testfasta)
-    @read1=@calc.convert(@reads[2])
-    @read2=@calc.convert(@reads[3])
-  end
-  it "calculates the overlap between two reads" do
-    expect(@calc.overlap(@read1,@read2)).to eq(14)
-  end
-
-  it "calculates the overlap regardless of order" do
-    expect(@calc.overlap(@read2,@read1)).to eq(14)
-  end
-end
 
 describe "#summed_dissimilarity" do
   it "returns an int" do
