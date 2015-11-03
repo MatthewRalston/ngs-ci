@@ -3,7 +3,34 @@
 ** Rarefaction curves
 *** bash + samtools + resampling (100 times?)
 *** How many divisions??
-** Triangular numbers
+** Dissimilarity term
+*** Each read has a dissimilarity to other reads in a group:
+*** The number of bases that the read has not shared by the other.
+*** Under maximum saturation (T is the triangular number function):
+**** Left most read (5'):
+***** T(L-1)
+**** Next left most read:
+***** T(L-1) - (L-1) + 1
+**** Third read:
+***** T(L-1) - (L-1) - (L-2) + 1 + 2
+**** Etc.
+*** For each read 'i' (a 5' index), a summed dissimilarity can be calculated as:
+**** T(L-1) - [ T(L-1) - T(L-j) ] + T(j-1)
+**** Simplified: T(L-j) + T(j-1)
+*** The definition of a triangular number: T(n) = n(n+1)/2
+*** This allows us to simplify
+**** (L-j)(L-j+1)/2 + (j-1)(j-1+1)/2
+**** [ (L-j)(L-j+1) + (j-1)(j-1+1) ] / 2
+**** ( L^2 - Lj + L - Lj + j^2 - j + j^2 - j ) / 2
+**** ( L^2 - 2Lj + L + 2j^2 - 2j ) / 2
+**** = L^2/2 - Lj + L/2 + j^2 - j
+*** Thus, dissimilarities (under max saturation) = (1..L).to_a.map {|j| L^2/2 - Lj + L/2 + j^2 - j }
+*** And average dissimilarity (under max saturation) = dissimilarities.reduce(:+) / L
+*** def tri(x,n=0)
+***   return x == 0 ? n : tri(x-1,n+x)
+*** end
+*** 
+** Similarity term (deprectated)
 *** Triangular number defined as
 *** T(n) = n(n+1)/2
 *** Maximum overlap determined by function of read length L
@@ -27,8 +54,9 @@
 **** 2f(L) = 2*(L^2) - L^2 - J^2 - J^2 + 2LJ - 2L - L + J + J
 **** 2f(L) = L^2 - 2*(J^2) + 2LJ - 3L + 2J
 **** f(L) = -J^2 + (L^2)/2 + LJ - 3L/2 + J
-**** 2850 (triangular number T(L-1) L=76 J=1
-**** f(76) = 2850
+*** For the first read, the summed overlap is equal to the triangular number of L - 1:
+*** e.g. L = 76, j = 1 : summed overlap = 2850
+*** AND f(L) = 2850  as well.
 * Notes
 ** U*O/L vs. 200*U*O/(L^2)
 ** U/L is the number of unique reads at that base, length normalized
