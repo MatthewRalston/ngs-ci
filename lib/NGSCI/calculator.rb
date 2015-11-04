@@ -126,7 +126,7 @@ module NGSCI
       reads = reads.group_by(&:start).map{|k,v| v.max{|x,y| x.length <=> y.length}}
       d = summed_dissimilarity(reads)
       uniquereads = reads.size
-      return [numreads,uniquereads,d.to_f/@read_length,uniquereads*d/@denominator]
+      return [numreads,uniquereads,(d.to_f/@read_length).round(4),(uniquereads*d/@denominator).round(4)]
     end
 
 
@@ -202,19 +202,17 @@ module NGSCI
     # @param [Integer] read_length The read length
     # @return [Float] denominator The denominator including normalization factors for the complexity index
     def denominator_calc(read_length)
-      read_length*3*max_avg_summed_dissimilarity_per_read(read_length)/(read_length - 1).to_f
+      read_length*3*max_summed_dissimilarity(read_length)/(read_length - 1).to_f
     end
 
     # Calculates the average summed dissimilarity (per read) of that read to all other reads
     #
     # @param [Integer] read_length The read length
     # @return [Integer] avg_summed_dissimilarity
-    def max_avg_summed_dissimilarity_per_read(read_length)
+    def max_summed_dissimilarity(read_length)
       # For each unique read under maximum saturation, calculate the sum of dissimilarities for that read to all other reads
       summed_dissimilarities = (1..read_length).to_a.map { |r| 
-        (read_length ** 2) / 2 - read_length*r + read_length/2 + r**2 - r }
-      # Return the average summed_dissimilarity by summation and division by the number of unique reads
-      summed_dissimilarities.reduce(:+)/read_length
+        (read_length ** 2) / 2 - read_length*r + read_length/2 + r**2 - r }.reduce(:+)
     end
 
     # Converts strand specific BAM read into a sequence object format
