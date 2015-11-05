@@ -91,74 +91,26 @@ describe "#sci" do
   end
 end
 
-describe "#read_length_calc" do
-  it "calculates the read length" do
-    @bam=Bio::DB::Sam.new(:bam => testbam,:fasta => testfasta)
-    test_block_size = 100
-    expect(NGSCI::Calculator.read_length_calc(@bam,100)).to eq(76)
+
+describe "#dissimilarity" do
+  before(:each) do
+    @bam=Bio::DB::Sam.new(:bam => testbam, :fasta => testfasta)
+    @bam.open
+    @reads = []
+    @bam.fetch("NC_001988.2",0,200) {|x| @reads << x }
+    @calc = NGSCI::Calculator.new(testbam,testfasta)
+    @read1 = @calc.convert(@reads[2])
+    @read2 = @calc.convert(@reads[3])
   end
 
-  it "fails on an empty bam file" do
-    @emptybam = Bio::DB::Sam.new(:bam => emptybam, :fasta => testfasta)
-    expect{NGSCI::Calculator.read_length_calc(@emptybam,100)}.to raise_error(NGSCI::NGSCIIOError)
+  it "calculates the unique bases of the first read from the second" do
+    expect(@calc.dissimilarity(@read1,@read2)).to eq(62)
   end
-end
 
-describe "#denominator_calc" do
-  context "when passed and integer read length" do
-    before(:each) do
-      @read_length = 76
-      @calc = NGSCI::Calculator.new(testbam,testfasta)
-    end
-    it "returns a float denominator" do
-      expect(@calc.denominator_calc(@read_length)).to be_instance_of Float
-    end
-    it "returns the correct denominator for 76bp read length" do
-      expect(@calc.denominator_calc(@read_length)).to eq(-1)
-    end
+  it "calculates the unique bases, regardless of the order" do
+    expect(@calc.dissimilarity(@read2,@read1)).to eq(62)
   end
 end
-
-describe "#max_avg_summed_dissimilarity_per_read" do
-
-  context "calculating the average summed dissimilarity" do
-    before(:each) do
-      @read_length = 76
-      @calc = NGSCI::Calculator.new(saturatedbam,testfasta)
-      @bam = Bio::DB::Sam.new(:bam=>saturatedbam,:fasta=>testfasta)
-      @bam.open
-      @reads = []
-      @bam.fetch("NC_001988.2",76,76){|x| read = @calc.convert(x); @reads << read unless read.nil?}
-      @reads = @reads.uniq{|x| x.start}
-    end
-    it "yields the triangular sum dissimilarity" do
-      def tri(x,n=0)
-        return x == 0 ? n : tri(x-1,n+x)
-      end
-      triangular_sums = (1..@read_length).to_a.map{|x| 
-        tri(@read_length - x) + tri(x - 1)
-      }
-      avg_triangular_sum = triangular_sums.reduce(:+)
-      calculated_max_summed_dissimilarity = @calc.max_summed_dissimilarity(@read_length)
-      expect(calculated_max_summed_dissimilarity).to eq(avg_triangular_sum)
-    end
-    it "is equal to the #summed_dissimilarity of saturated reads" do
-      theoretical_max_summed_dissimilarity = @calc.max_summed_dissimilarity(@read_length)
-      expect(theoretical_max_summed_dissimilarity).to eq(@calc.summed_dissimilarity(@reads))
-    end
-  end
-  context "when averaging for all 'other' reads" do
-    before(:each) do
-      @read_length = 76
-      @calc = NGSCI::Calculator.new(testbam,testfasta)
-    end
-    it "is equal to 1/3 times (read_length - 1)" do
-      calculated_max_summed_dissimilarity = @calc.max_summed_dissimilarity(@read_length)/(@read_length-1).to_f
-      expect(calculated_max_summed_dissimilarity).to eq((1/3)*(@read_length-1))
-    end
-  end
-end
-
 
 describe "#summed_dissimilarity" do
   it "returns an int" do
@@ -208,23 +160,74 @@ describe "#summed_dissimilarity" do
   end
 end
 
-describe "#dissimilarity" do
-  before(:each) do
-    @bam=Bio::DB::Sam.new(:bam => testbam, :fasta => testfasta)
-    @bam.open
-    @reads = []
-    @bam.fetch("NC_001988.2",0,200) {|x| @reads << x }
-    @calc = NGSCI::Calculator.new(testbam,testfasta)
-    @read1 = @calc.convert(@reads[2])
-    @read2 = @calc.convert(@reads[3])
+describe "#max_summed_dissimilarity" do
+  context "when calculating the average summed dissimilarity" do
+    before(:each) do
+      @read_length = 76
+      @calc = NGSCI::Calculator.new(saturatedbam,testfasta)
+      @bam = Bio::DB::Sam.new(:bam=>saturatedbam,:fasta=>testfasta)
+      @bam.open
+      @reads = []
+      @bam.fetch("NC_001988.2",76,76){|x| read = @calc.convert(x); @reads << read unless read.nil?}
+      @reads = @reads.uniq{|x| x.start}
+    end
+    it "yields the triangular sum dissimilarity" do
+      # This test demonstrates that the simplified (more efficient) formula for maximum summed dissimilarity
+      # is equivalent to the triangular sum formula for the maximum summed dissimilarity within a group of reads
+      def tri(x,n=0)
+        return x == 0 ? n : tri(x-1,n+x)
+      end
+      triangular_sum = (1..@read_length).to_a.map{|x| 
+        tri(@read_length - x) + tri(x - 1)
+      }.reduce(:+)
+      calculated_max_summed_dissimilarity = @calc.max_summed_dissimilarity(@read_length)
+      expect(calculated_max_summed_dissimilarity).to eq(triangular_sum)
+    end
+    it "is equal to the #summed_dissimilarity of saturated reads" do
+      # This test demonstrates that the formula for the theoretical maximum summed dissimilarity among reads
+      # is equivalent to the summed dissimilarity under maximum saturation (the saturated.bam test file)
+      theoretical_max_summed_dissimilarity = @calc.max_summed_dissimilarity(@read_length)
+      expect(theoretical_max_summed_dissimilarity).to eq(@calc.summed_dissimilarity(@reads))
+    end
+  end
+  context "when averaging for all 'other' reads" do
+    before(:each) do
+      @read_length = 76
+      @calc = NGSCI::Calculator.new(testbam,testfasta)
+    end
+    it "is equal to 1/3 times (read_length - 1)" do
+      calculated_max_summed_dissimilarity = @calc.max_summed_dissimilarity(@read_length)/(@read_length-1).to_f
+      expect(calculated_max_summed_dissimilarity).to eq((1/3)*(@read_length-1))
+    end
+  end
+end
+
+ 
+describe "#denominator_calc" do
+  context "when passed and integer read length" do
+    before(:each) do
+      @read_length = 76
+      @calc = NGSCI::Calculator.new(testbam,testfasta)
+    end
+    it "returns a float denominator" do
+      expect(@calc.denominator_calc(@read_length)).to be_instance_of Float
+    end
+    it "returns the correct denominator for 76bp read length" do
+      expect(@calc.denominator_calc(@read_length)).to eq(-1)
+    end
+  end
+end
+
+describe "#read_length_calc" do
+  it "calculates the read length" do
+    @bam=Bio::DB::Sam.new(:bam => testbam,:fasta => testfasta)
+    test_block_size = 100
+    expect(NGSCI::Calculator.read_length_calc(@bam,100)).to eq(76)
   end
 
-  it "calculates the unique bases of the first read from the second" do
-    expect(@calc.dissimilarity(@read1,@read2)).to eq(62)
-  end
-
-  it "calculates the unique bases, regardless of the order" do
-    expect(@calc.dissimilarity(@read2,@read1)).to eq(62)
+  it "fails on an empty bam file" do
+    @emptybam = Bio::DB::Sam.new(:bam => emptybam, :fasta => testfasta)
+    expect{NGSCI::Calculator.read_length_calc(@emptybam,100)}.to raise_error(NGSCI::NGSCIIOError)
   end
 end
 

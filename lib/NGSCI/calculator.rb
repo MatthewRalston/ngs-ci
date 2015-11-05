@@ -130,6 +130,27 @@ module NGSCI
     end
 
 
+    # Calculation of the dissimilarity between two reads
+    #
+    # @param read1 [NGSCI::Read]  First read to be compared
+    # @param read2 [NGSCI::Read]  Second read to be compared
+    # @return unique_bases [Integer] Length of non-overlapping bases
+    def dissimilarity(read1,read2)
+      if read1.start > read2.start
+        if read1.stop < read2.stop # Read 1 is inside read 2
+          (read1.start - read2.start) + (read2.stop - read1.stop)
+        else # Normal overlap
+          read1.start - read2.start
+        end
+      else
+        if read1.stop > read2.stop # Read 2 is inside read 1
+          (read2.start - read1.start) + (read1.stop - read2.stop)
+        else # Normal overlap
+          read2.start - read1.start
+        end
+      end
+    end    
+    
     # Calculates summed dissimilarity between a group of reads
     #
     # @param reads [Array<NGSCI::Read>] Array of reads
@@ -151,26 +172,24 @@ module NGSCI
       return sum
     end
 
-    # Calculation of the dissimilarity between two reads
+    # Calculates the average summed dissimilarity (per read) of that read to all other reads
     #
-    # @param read1 [NGSCI::Read]  First read to be compared
-    # @param read2 [NGSCI::Read]  Second read to be compared
-    # @return unique_bases [Integer] Length of non-overlapping bases
-    def dissimilarity(read1,read2)
-      if read1.start > read2.start
-        if read1.stop < read2.stop # Read 1 is inside read 2
-          (read1.start - read2.start) + (read2.stop - read1.stop)
-        else # Normal overlap
-          read1.start - read2.start
-        end
-      else
-        if read1.stop > read2.stop # Read 2 is inside read 1
-          (read2.start - read1.start) + (read1.stop - read2.stop)
-        else # Normal overlap
-          read2.start - read1.start
-        end
-      end
-    end
+    # @param [Integer] read_length The read length
+    # @return [Integer] avg_summed_dissimilarity
+    def max_summed_dissimilarity(read_length)
+      # For each unique read under maximum saturation, calculate the sum of dissimilarities for that read to all other reads
+      summed_dissimilarities = (1..read_length).to_a.map { |r| 
+        (read_length ** 2) / 2 - read_length*r + read_length/2 + r**2 - r }.reduce(:+)
+    end    
+
+    # Calculates the denominator for the complexity index from the read length, assuming maximum saturation (i.e. number of unique reads == read_length)
+    #
+    # @param [Integer] read_length The read length
+    # @return [Float] denominator The denominator including normalization factors for the complexity index
+    def denominator_calc(read_length)
+      read_length*3*max_summed_dissimilarity(read_length)/(read_length - 1).to_f
+    end    
+    
 
     # Calculates the read length of a bam file by sampling at least on full block of reads
     #
@@ -195,24 +214,6 @@ module NGSCI
         end
       end
       lengths.max
-    end
-
-    # Calculates the denominator for the complexity index from the read length, assuming maximum saturation (i.e. number of unique reads == read_length)
-    #
-    # @param [Integer] read_length The read length
-    # @return [Float] denominator The denominator including normalization factors for the complexity index
-    def denominator_calc(read_length)
-      read_length*3*max_summed_dissimilarity(read_length)/(read_length - 1).to_f
-    end
-
-    # Calculates the average summed dissimilarity (per read) of that read to all other reads
-    #
-    # @param [Integer] read_length The read length
-    # @return [Integer] avg_summed_dissimilarity
-    def max_summed_dissimilarity(read_length)
-      # For each unique read under maximum saturation, calculate the sum of dissimilarities for that read to all other reads
-      summed_dissimilarities = (1..read_length).to_a.map { |r| 
-        (read_length ** 2) / 2 - read_length*r + read_length/2 + r**2 - r }.reduce(:+)
     end
 
     # Converts strand specific BAM read into a sequence object format
