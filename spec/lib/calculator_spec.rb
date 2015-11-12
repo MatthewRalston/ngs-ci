@@ -78,7 +78,6 @@ describe "#sci" do
       expect(@calc.sci(@reads)).to be_kind_of(Array)
     end
     it "returns the sequencing complexity index" do
-      puts @reads.size
       expect(@calc.sci(@reads)[-1]).to eq(100.0)
     end
   end
@@ -161,7 +160,16 @@ describe "#summed_dissimilarity" do
 end
 
 describe "#max_summed_dissimilarity" do
-  context "when calculating the average summed dissimilarity" do
+  context "when passed and integer read length" do
+    before(:each) do
+      @read_length = 76
+      @calc = NGSCI::Calculator.new(testbam,testfasta)
+    end
+    it "returns a float denominator" do
+      expect(@calc.max_summed_dissimilarity(@read_length)).to be_kind_of Integer
+    end
+  end
+  context "when calculating the maximum summed dissimilarity" do
     before(:each) do
       @read_length = 76
       @calc = NGSCI::Calculator.new(saturatedbam,testfasta)
@@ -190,14 +198,14 @@ describe "#max_summed_dissimilarity" do
       expect(theoretical_max_summed_dissimilarity).to eq(@calc.summed_dissimilarity(@reads))
     end
   end
-  context "when averaging for all 'other' reads" do
-    before(:each) do
-      @read_length = 76
-      @calc = NGSCI::Calculator.new(testbam,testfasta)
-    end
+  context "when averaging per read" do
     it "is equal to 1/3 times (read_length - 1)" do
-      calculated_max_summed_dissimilarity = @calc.max_summed_dissimilarity(@read_length)/(@read_length-1).to_f
-      expect(calculated_max_summed_dissimilarity).to eq((1/3)*(@read_length-1))
+      (32..200).each do |x|
+        @read_length = x
+        @calc = NGSCI::Calculator.new(testbam,testfasta)
+        calculated_max_summed_dissimilarity = @calc.max_summed_dissimilarity(@read_length)/@read_length/(@read_length)
+        expect(calculated_max_summed_dissimilarity).to eq((@read_length-1)/3)
+      end
     end
   end
 end
@@ -206,14 +214,14 @@ end
 describe "#denominator_calc" do
   context "when passed and integer read length" do
     before(:each) do
-      @read_length = 76
+      @read_length = 75
       @calc = NGSCI::Calculator.new(testbam,testfasta)
     end
     it "returns a float denominator" do
-      expect(@calc.denominator_calc(@read_length)).to be_instance_of Float
+      expect(@calc.denominator_calc(@read_length)).to be_kind_of Integer
     end
     it "returns the correct denominator for 76bp read length" do
-      expect(@calc.denominator_calc(@read_length)).to eq(-1)
+      expect(@calc.denominator_calc(@read_length)).to eq(@read_length*(@read_length-1)/3 )
     end
   end
 end

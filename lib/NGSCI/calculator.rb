@@ -183,11 +183,13 @@ module NGSCI
     end    
 
     # Calculates the denominator for the complexity index from the read length, assuming maximum saturation (i.e. number of unique reads == read_length)
+    # unique reads /read length * summed_dissimilarity / (max_summed_dissimilarity/(read length * read length)
+    # Denomiator = read length * max_summed_dissimilarity / (read_length * read_length)
     #
     # @param [Integer] read_length The read length
     # @return [Float] denominator The denominator including normalization factors for the complexity index
     def denominator_calc(read_length)
-      read_length*3*max_summed_dissimilarity(read_length)/(read_length - 1).to_f
+      read_length*max_summed_dissimilarity(read_length)/read_length/read_length
     end    
     
 
