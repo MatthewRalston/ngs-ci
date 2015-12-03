@@ -189,7 +189,7 @@ module NGSCI
     # @param [Integer] read_length The read length
     # @return [Float] denominator The denominator including normalization factors for the complexity index
     def denominator_calc(read_length)
-      read_length*max_summed_dissimilarity(read_length)/read_length/read_length
+      read_length*max_summed_dissimilarity(read_length)
     end    
     
 

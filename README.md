@@ -5,6 +5,12 @@
 [![Coverage Status](https://coveralls.io/repos/MatthewRalston/ngs-ci/badge.svg?branch=master&service=github)](https://coveralls.io/github/MatthewRalston/ngs-ci?branch=master)
 
 
+# Todo
+
+The inconsistency between the max summed dissimilarity and the denominator calculation is likely:
+1. Issue in the complexity index (when present is max, 
+    a. ( present - missing ) / max = present/max_similarity - missing/max_dissim
+
 
 # NGS Complexity Index
 
