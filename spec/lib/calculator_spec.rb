@@ -165,7 +165,7 @@ describe "#max_summed_dissimilarity" do
       @read_length = 76
       @calc = NGSCI::Calculator.new(testbam,testfasta)
     end
-    it "returns a float denominator" do
+    it "returns a float" do
       expect(@calc.max_summed_dissimilarity(@read_length)).to be_kind_of Integer
     end
   end
@@ -200,10 +200,9 @@ describe "#max_summed_dissimilarity" do
   end
   context "when averaging per read" do
     it "is equal to 1/3 times (read_length - 1)" do
-      (32..200).each do |x|
-        read_length = x
-        @calc = NGSCI::Calculator.new(testbam,testfasta)
-        calculated_max_summed_dissimilarity = @calc.max_summed_dissimilarity(read_length)/read_length/(read_length)
+      @calc = NGSCI::Calculator.new(testbam,testfasta)
+      (32..200).each do |read_length|
+        calculated_max_summed_dissimilarity = @calc.max_summed_dissimilarity(read_length)/(read_length*read_length)
         expect(calculated_max_summed_dissimilarity).to eq((read_length-1)/3)
       end
     end
@@ -220,11 +219,12 @@ describe "#denominator_calc" do
       read_length = 76
       expect(@calc.denominator_calc(read_length)).to be_kind_of Integer
     end
-    it "returns the correct denominator for each read length" do
-      (32..200).each do |x|
-        read_length = x
-        expect(@calc.denominator_calc(read_length)).to eq((read_length^3)*(read_length-1)/3 )
-      end
+  end
+  it "is the max_summed_dissimilarity * read length" do
+    @calc = NGSCI::Calculator.new(testbam,testfasta)
+    (32..200).each do |read_length|
+      max_sum_dissim = @calc.max_summed_dissimilarity(read_length)
+      expect(@calc.denominator_calc(read_length)).to eq(read_length*max_sum_dissim)
     end
   end
 end

@@ -126,7 +126,7 @@ module NGSCI
       reads = reads.group_by(&:start).map{|k,v| v.max{|x,y| x.length <=> y.length}}
       d = summed_dissimilarity(reads)
       uniquereads = reads.size
-      return [numreads,uniquereads,(d.to_f/@read_length).round(4),(uniquereads*d/@denominator).round(4)]
+      return [numreads,uniquereads,(d.to_f/@read_length).round(4),(100*uniquereads*d/@denominator).round(4)]
     end
 
 
@@ -187,7 +187,7 @@ module NGSCI
     # Denomiator = read length * max_summed_dissimilarity / (read_length * read_length)
     #
     # @param [Integer] read_length The read length
-    # @return [Float] denominator The denominator including normalization factors for the complexity index
+    # @return [Float] denominator The denominator including normalization factors for the complexity index 349184
     def denominator_calc(read_length)
       read_length*max_summed_dissimilarity(read_length)
     end    
