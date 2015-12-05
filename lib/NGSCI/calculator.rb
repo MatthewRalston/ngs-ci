@@ -7,16 +7,21 @@ module NGSCI
 
   # A calculator calculates the sequencing complexity index.
   #
-  # @!attribute [r] sci
+  # @authoer Matthew Ralston
+  # @abstract A class for calculating the complexity index on next generation sequencing reads
+  # @attr_reader [Integer] block_size The block size for parallelizing disk access
+  # @attr_reader [Hash<Symbol,Integer>] chroms A hash of chromosomes and their sizes
+  # @attr_reader [Integer] read_length The read length obtained from a bam file
+  # @attr_reader [Integer] denominator The denominator and normalization factors calculated from the read length
   class Calculator
-    attr_reader :sci, :block_size, :buffer, :chroms
+    attr_reader :block_size, :chroms, :read_length, :denominator
 
     # A new calculator to compute the sequencing complexity index given
     # a loaded Bio::DB::Sam object and optional thread argument.
     #
-    # @param bam [Bio::DB::Sam] Opened bam file with loaded reference.
-    # @param threads [Int] The number of threads used to compute NGSCI.
-    # @param strand [String] One of [FR RF F] or nil for strandedness.
+    # @param [Bio::DB::Sam] bam Opened bam file with loaded reference.
+    # @param [Int] threads The number of threads used to compute NGSCI.
+    # @param [String] strand One of [FR RF F] or nil for strandedness.
     def initialize(bam, reference, strand: nil, threads: 1)
       @block_size = 1600
       @results = nil
@@ -28,7 +33,8 @@ module NGSCI
       @bam.open
       @threads = threads
       @chroms = reference_sequences(reference)
-      read_length
+      @read_length = NGSCI::Calculator.read_length_calc(@bam,@block_size)
+      @denominator = denominator_calc(@read_length)
       if strand
         unless %w(FR RF F).include?(strand)
           raise NGSCI::NGSCIError.new "Strand specific option #{opts.strand} is invalid." +
@@ -89,10 +95,10 @@ module NGSCI
     def readblock(chrom,i)
       reads=[]
       results = @strand ? {"+" => [],"-" => []}: {nil => []}
-      start = [0,(i * @block_size) - @buffer].max
+      start = [0,(i * @block_size) - @read_length].max
       stop = [(i + 1) * @block_size, self.chroms[chrom]].min
       @bam.fetch(chrom,start,stop) {|read| reads << convert(read)}
-      start += @buffer unless start == 0
+      start += @read_length unless start == 0
       reads.compact!
       reads.sort_by!(&:start) unless reads.empty?
       x=0
@@ -109,93 +115,114 @@ module NGSCI
       return results
     end
 
-
     # Calculates sequencing complexity index for a single base
     # 
     # @param reads [Array<NGSCI::Read>] A group of reads aligned to a single base.
-    # @return sci [Float] 
+    # @return localNGSCI [Array<Integer,Integer,Float,Float>]
     def sci(reads)
       numreads=reads.size
       # Groups reads by start site
       # selects the largest read length from the groups
-      reads = reads.group_by(&:start).map{|k,v| v.max{|x,y| (x.stop-x.start).abs <=> (y.stop-y.start).abs}}
-      o = summed_overlaps(reads)
+      reads = reads.group_by(&:start).map{|k,v| v.max{|x,y| x.length <=> y.length}}
+      d = summed_dissimilarity(reads)
       uniquereads = reads.size
-      return [numreads,uniquereads,(@buffer*o.to_f/@denom).round(4),(300*uniquereads*o/(2*@denom)).round(4)]
+      return [numreads,uniquereads,(d.to_f/@read_length).round(4),(100*uniquereads*d/@denominator).round(4)]
     end
 
-    # Calculates summed overlap between a group of reads
+
+    # Calculation of the dissimilarity between two reads
+    #
+    # @param read1 [NGSCI::Read]  First read to be compared
+    # @param read2 [NGSCI::Read]  Second read to be compared
+    # @return unique_bases [Integer] Length of non-overlapping bases
+    def dissimilarity(read1,read2)
+      if read1.start > read2.start
+        if read1.stop < read2.stop # Read 1 is inside read 2
+          (read1.start - read2.start) + (read2.stop - read1.stop)
+        else # Normal overlap
+          read1.start - read2.start
+        end
+      else
+        if read1.stop > read2.stop # Read 2 is inside read 1
+          (read2.start - read1.start) + (read1.stop - read2.stop)
+        else # Normal overlap
+          read2.start - read1.start
+        end
+      end
+    end    
+    
+    # Calculates summed dissimilarity between a group of reads
     #
     # @param reads [Array<NGSCI::Read>] Array of reads
-    # @return avg_overlap [Integer] Summed overlap between reads
-    def summed_overlaps(reads)
+    # @return sum_dissimilarity [Integer] Summed dissimilarity between reads
+    def summed_dissimilarity(reads)
       numreads = reads.size
       sum=0
-      unless numreads == 1
+      unless numreads <= 1
         i = 0
         while i < numreads
           r1 = reads[i] # for each of n reads
           sum+=reads.
                 reject{|r| r == r1}. # select the n-1 other reads
-                map{|r| overlap(r,r1)}. # calculate their overlap to r1
+                map{|r| dissimilarity(r,r1)}. # calculate their overlap to r1
                 reduce(:+)
           i+=1
         end
       end
       return sum
-    end    
-
-    # Calculation of the overlap between two reads
-    # 
-    # @param read1 [NGSCI::Read] First read to be compared
-    # @param read2 [NGSCI::Read] First read to be compared
-    # @return overlap_length [Integer] Length of overlap
-    def overlap(read1,read2)
-      if read1.start > read2.start
-        if read1.stop < read2.stop # Read 1 is inside read 2
-          read1.stop - read1.start
-        else # Normal overlap
-          read2.stop - read1.start
-        end
-      else
-        if read1.stop > read2.stop # Read 2 is inside read 1
-          read2.stop - read2.start
-        else # Normal overlap
-          read1.stop - read2.start
-        end
-      end
     end
 
-    # Loads the read length from a bam file into the @buffer variable
+    # Calculates the average summed dissimilarity (per read) of that read to all other reads
     #
-    def read_length
-      buffer=0
-      stats=@bam.index_stats.select {|k,v| k != "*" && v[:mapped_reads] > 0}
+    # @param [Integer] read_length The read length
+    # @return [Integer] avg_summed_dissimilarity
+    def max_summed_dissimilarity(read_length)
+      # For each unique read under maximum saturation, calculate the sum of dissimilarities for that read to all other reads
+      summed_dissimilarities = (1..read_length).to_a.map { |r| 
+        (read_length ** 2) / 2 - read_length*r + read_length/2 + r**2 - r }.reduce(:+)
+    end    
+
+    # Calculates the denominator for the complexity index from the read length, assuming maximum saturation (i.e. number of unique reads == read_length)
+    # unique reads /read length * summed_dissimilarity / (max_summed_dissimilarity/(read length * read length)
+    # Denomiator = read length * max_summed_dissimilarity / (read_length * read_length)
+    #
+    # @param [Integer] read_length The read length
+    # @return [Float] denominator The denominator including normalization factors for the complexity index 349184
+    def denominator_calc(read_length)
+      read_length*max_summed_dissimilarity(read_length)
+    end    
+    
+
+    # Calculates the read length of a bam file by sampling at least on full block of reads
+    #
+    # @param [Bio::DB::Sam] bam A bam reader object
+    # @param [Integer] block_size The number of reads to read from a bam file
+    # @return [Integer] read_length The read length acquired from reading a block at a time until at least 100 reads are acquired
+    def self.read_length_calc(bam,block_size)
+      stats=bam.index_stats.select {|k,v| k != "*" && v[:mapped_reads] > 0}
       if stats.empty?
         raise NGSCIIOError.new "BAM file is empty! Check samtools idxstats."
-      else
-        i=0
-        lengths=[]
-        test = @block_size
-        while i <= test 
-          @bam.view do |read|
-            lengths << read.seq.size
-            i +=1
-          end
-          if i == test && lengths.size < 100
-            test += @block_size
-          end
-        end
-        @buffer = lengths.max
-        @denom = @buffer**2 * (@buffer - 1)**2
       end
+      i=0
+      lengths=[]
+      test = block_size
+      while i <= test 
+        bam.view do |read|
+          lengths << read.seq.size
+          i +=1
+        end
+        if i == test && lengths.size < 100
+          test += block_size
+        end
+      end
+      lengths.max
     end
 
     # Converts strand specific BAM read into a sequence object format
     # Uses the @strand instance variable to determine the strand of conversion
     # 
-    # @param read [Bio::DB::Alignment] Read to be converted.
-    # @return read [NGSCI::Read] Converted Read object
+    # @param [Bio::DB::Alignment] read Read to be converted.
+    # @return [NGSCI::Read] read Converted Read object
     def convert(read)
       unless read.query_unmapped
         if @strand
@@ -257,7 +284,7 @@ module NGSCI
     # Acquires names and sizes of reference sequences included in the bam file
     #
     # @param reference [String] Path to reference fasta file.
-    # @return chromosomes [Hash<Symbol,Object>] A dictionary of chromosome sizes
+    # @return chromosomes [Hash<Symbol,Integer>] A dictionary of chromosome sizes
     def reference_sequences(reference)
       chromosomes={}
       Bio::FastaFormat.open(@reference).each_entry do |f| 
@@ -265,6 +292,7 @@ module NGSCI
       end      
       chromosomes.select {|chrom| @bam.index_stats.keys.include?(chrom)}
     end
+
     # Exports the results to outfile
     #
     # @param outfile [String] Path to outfile

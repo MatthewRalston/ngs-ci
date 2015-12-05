@@ -58,10 +58,18 @@
 *** e.g. L = 76, j = 1 : summed overlap = 2850
 *** AND f(L) = 2850  as well.
 * Notes
-** U*O/L vs. 200*U*O/(L^2)
+** U = u/L
 ** U/L is the number of unique reads at that base, length normalized
-** When U/L is 1 (maximum saturation)
-** O = L/2
-** Although, average overlap can be greater than L/2 with less reads 
-
+** U*O/L vs. 200*U*O/(L^2)
+** the average summed overlap is O/(L)
+** average because different reads in the formation have different summed overlaps
+** the average average overlap is 2L/3 or O/L/(L-1) or O/(L^2-L)
+** 
+** D = d /
+** the average summed dissimilarity is D/(L)
+** average because different reads in the formation have different summed dissimilarities
+** the average average dissimilarity is L/3 or D/L/(L-1) or D/(L^2-L)
+** This matches the average similarity nicely...
+** 
+** u*d / L*L*(L-1)
 * Bugs
