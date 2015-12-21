@@ -7,7 +7,7 @@ module NGSCI
 
   # A calculator calculates the sequencing complexity index.
   #
-  # @authoer Matthew Ralston
+  # @author Matthew Ralston
   # @abstract A class for calculating the complexity index on next generation sequencing reads
   # @attr_reader [Integer] block_size The block size for parallelizing disk access
   # @attr_reader [Hash<Symbol,Integer>] chroms A hash of chromosomes and their sizes
@@ -48,6 +48,7 @@ module NGSCI
 
     # Calculation of the sequencing complexity index
     #
+    # @param runtime [false] Print profiling information?
     def run(runtime: false)
       RubyProf.start if runtime
       # Convert each aligned read to Read clas
@@ -89,9 +90,9 @@ module NGSCI
     #
     # @param chrom [String] The chromosome from the bam file
     # @param i [Integer] The number of blocks that have been read
-    # @return localNGSCI [Hash<Symbol,Array>]
-    #   * :+ (Array[Integer]) The NGSCI for the + strand
-    #   * :- (Array[Integer]) The NGSCI for the - strand
+    # @return [Hash<Symbol,Array>]
+    #   * :+ (Array[Array]) The NGSCI for the + strand along the 
+    #   * :- (Array[Array]) The NGSCI for the - strand
     def readblock(chrom,i)
       reads=[]
       results = @strand ? {"+" => [],"-" => []}: {nil => []}
@@ -118,7 +119,7 @@ module NGSCI
     # Calculates sequencing complexity index for a single base
     # 
     # @param reads [Array<NGSCI::Read>] A group of reads aligned to a single base.
-    # @return localNGSCI [Array<Integer,Integer,Float,Float>]
+    # @return [Array<Integer,Integer,Float,Float>]
     def sci(reads)
       numreads=reads.size
       # Groups reads by start site
@@ -134,7 +135,7 @@ module NGSCI
     #
     # @param read1 [NGSCI::Read]  First read to be compared
     # @param read2 [NGSCI::Read]  Second read to be compared
-    # @return unique_bases [Integer] Length of non-overlapping bases
+    # @return [Integer] Length of non-overlapping/unique bases
     def dissimilarity(read1,read2)
       if read1.start > read2.start
         if read1.stop < read2.stop # Read 1 is inside read 2
@@ -154,7 +155,7 @@ module NGSCI
     # Calculates summed dissimilarity between a group of reads
     #
     # @param reads [Array<NGSCI::Read>] Array of reads
-    # @return sum_dissimilarity [Integer] Summed dissimilarity between reads
+    # @return [Integer] Sum of all dissimilarities between the group of reads
     def summed_dissimilarity(reads)
       numreads = reads.size
       sum=0
@@ -239,7 +240,7 @@ module NGSCI
     # Assumes paired-end strand-specific sequencing with "fr" chemistry
     # 
     # @param read [Bio::DB::Alignment] Read to be converted.
-    # @return read [NGSCI::Read] Converted Read object
+    # @return [NGSCI::Read] Converted Read object
     def fr(read)
       if read.first_in_pair
         read.query_strand ? newread(read,strand:"+") : newread(read,strand:"-")
@@ -253,7 +254,7 @@ module NGSCI
     # Assumes paired-end strand-specific sequencing with "rf" chemistry
     # 
     # @param read [Bio::DB::Alignment] Read to be converted.
-    # @return read [NGSCI::Read] Converted Read object
+    # @return [NGSCI::Read] Converted Read object
     def rf(read)
       if read.first_in_pair
         read.query_strand ? newread(read,strand:"-") : newread(read,strand:"+")
@@ -267,7 +268,7 @@ module NGSCI
     # Assumes single-end strand-specific sequencing with "f" chemistry
     # 
     # @param read [Bio::DB::Alignment] Read to be converted.
-    # @return read [NGSCI::Read] Converted Read object
+    # @return [NGSCI::Read] Converted Read object
     def f(read)
       read.query_strand ? newread(read,strand:"+") : newread(read,strand:"-")
     end
@@ -276,7 +277,7 @@ module NGSCI
     #
     # @param read [Bio::DB::Alignment] Aligned read to be converted
     # @param strand [String] Strand of read
-    # @return read [NGSCI::Read] Converted Read object
+    # @return [NGSCI::Read] Converted Read object
     def newread(read,strand: nil)
       Read.new(read.pos,read.pos+read.seq.size,strand: strand)
     end
@@ -284,7 +285,7 @@ module NGSCI
     # Acquires names and sizes of reference sequences included in the bam file
     #
     # @param reference [String] Path to reference fasta file.
-    # @return chromosomes [Hash<Symbol,Integer>] A dictionary of chromosome sizes
+    # @return [Hash<Symbol,Integer>] A dictionary of chromosome sizes
     def reference_sequences(reference)
       chromosomes={}
       Bio::FastaFormat.open(@reference).each_entry do |f| 
