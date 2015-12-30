@@ -22,14 +22,14 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'trollop','~> 2.1.2'
   spec.add_dependency 'bio-samtools', '= 2.3.2'
   spec.add_dependency 'parallel', '~> 1.4'
-  spec.add_dependency 'yell'
+  spec.add_dependency 'yell', '~> 2'
   spec.add_dependency "ruby-prof", "~> 0.15"
-  spec.has_rdoc = 'yard'
+  spec.has_rdoc = 'yard', '~> 0'
 
-  spec.add_development_dependency "bundler"
+  spec.add_development_dependency "bundler", "~> 1"
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_development_dependency "rspec", "~> 3.1"
   #spec.add_development_dependency "guard", "~> 2.12"
-  spec.add_development_dependency "coveralls"
+  spec.add_development_dependency "coveralls", "~> 0"
   #spec.add_development_dependency "cucumber",  "~> 1.3"
 end
