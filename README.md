@@ -8,9 +8,9 @@
 # Todo
 
 The inconsistency between the max summed dissimilarity and the denominator calculation is likely:
-1. Issue in the complexity index (when present is max, 
+1. Add option to calculate the denominator as the sum of all read lengths in the group instead of the number of reads times the read length if a flag is provided
+2. Issue in the complexity index (when present is max, 
     a. ( present - missing ) / max = present/max_similarity - missing/max_dissim
-
 
 # NGS Complexity Index
 
