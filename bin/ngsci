@@ -1,0 +1,53 @@
+#!/usr/bin/env python3
+
+import logging
+import argparse
+import os
+import sys
+#import yaml
+from multiprocessing import cpu_count
+
+from ngsci import parser, calculator
+
+
+logger=None
+
+
+
+        
+def get_root_logger(level):
+    levels=[logging.WARNING, logging.INFO, logging.DEBUG]
+    if level < 0 or level > 2:
+        raise TypeError("{0}.get_root_logger expects a verbosity between 0-2".format(__file__))
+    logging.basicConfig(level=levels[level], format="%(levelname)s: %(asctime)s %(funcName)s L%(lineno)s| %(message)s", datefmt="%Y/%m%d %I:%M:%S")
+    root_logger = logging.getLogger()
+    return root_logger
+
+
+if __name__ == '__main__':
+    sys.path.append("..")
+    #sys.path.remove(os.path.dirname(os.path.abspath(__file__)))
+    
+    argprsr = argparse.ArgumentParser()
+
+    argprsr.add_argument("-v", "--verbose", help="Prints warnings to the console by default", default=0, action="count")
+    argprsr.add_argument("bam", type=str, help="A sorted, indexed sam/bam/cram file")
+    #parser.set_defaults(func=index_file)
+
+    
+    args=argprsr.parse_args()
+    if len(sys.argv) == 1:
+        sys.exit(-1)
+    else:
+        logger=get_root_logger(args.verbose)
+        #logger.debug(sys.path)
+        # TODO
+        samfile = parser.BamReader(args.bam)
+        # Step size : how many bases to process at a time
+        step = 200
+        for chrom in samfile.samfile.header['SQ']:
+            for base in range(1, chrom['LN'], step):
+                logger.info("Calculating complexities for '{0}': bases {1} - {2}".format(chrom, base, base+step))
+                pos, neg = samfile.fetch(chrom['SN'], base, step)
+                for i in range(step):
+                    print("\t".join(list(map(str, (chrom['SN'], base + i, pos[i], neg[i])))))
